@@ -36,10 +36,11 @@ class Tensor:
             self = array
             return
 
-        if np.isscalar(array):
-            self.array = np.array([array])
-        else:
-            self.array = np.array(array)
+        # if np.isscalar(array):
+        #     self.array = np.array([array])
+        # else:
+        #     self.array = np.array(array)
+        self.array = np.array(array)
 
         if dtype is None:
             dtype = DEFAULT_TYPE
