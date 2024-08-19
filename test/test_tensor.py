@@ -249,7 +249,10 @@ def test_tensor_matmul():
 
 def test_numerical_grad():
     def f(x: Tensor) -> Tensor:
-        return x**2 + 2 * x
+        z = 2 * x + 2 + x
+        q = z.relu() + z * x
+        h = (z * z).relu()
+        return h + q + q * x
 
     x1 = Tensor(10.0, dtype=np.float64)
     y1 = f(x1)
@@ -260,7 +263,7 @@ def test_numerical_grad():
 
     # Numerical gradient
     epsilon = 1e-6
-    x2 = Tensor(10.0 + epsilon)
+    x2 = Tensor(10.0 + epsilon, dtype=np.float64)
     y2 = f(x2)
     print(y1.array)
     print(y2.array)

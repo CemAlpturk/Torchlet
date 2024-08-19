@@ -41,11 +41,10 @@ class Tensor:
         else:
             self.array = np.array(array)
 
-        # Converting to default dtype is this desired behavior?
         if dtype is None:
             dtype = DEFAULT_TYPE
 
-        #  self.array = self.array.astype(dtype)
+        self.array = self.array.astype(dtype)
         self.requires_grad = requires_grad
 
         self.name = name
@@ -109,6 +108,7 @@ class Tensor:
             args=(self,),
             name="sum",
             backward_fn=_backward,
+            dtype=self.dtype,
         )
 
         return out
@@ -123,6 +123,7 @@ class Tensor:
             args=(self,),
             name="mean",
             backward_fn=_backward,
+            dtype=self.dtype,
         )
 
         return out
@@ -136,6 +137,7 @@ class Tensor:
             args=(self,),
             name="transpose",
             backward_fn=_backward,
+            dtype=self.dtype,
         )
 
         return out
@@ -150,6 +152,7 @@ class Tensor:
             args=(self, other),
             name="dot",
             backward_fn=_backward,
+            dtype=np.result_type(self.array, other.array),
         )
         return out
 
@@ -162,6 +165,7 @@ class Tensor:
             args=(self,),
             name="ReLU",
             backward_fn=_backward,
+            dtype=self.dtype,
         )
 
         return out
@@ -187,6 +191,7 @@ class Tensor:
                 args=(self,),
                 name=f"+ {other}",
                 backward_fn=_backward,
+                dtype=np.result_type(self.array, other),
             )
 
         elif isinstance(other, Tensor):
@@ -200,6 +205,7 @@ class Tensor:
                 args=(self, other),
                 name="+",
                 backward_fn=_backward,
+                dtype=np.result_type(self.array, other.array),
             )
 
         else:
@@ -227,6 +233,7 @@ class Tensor:
                 args=(self,),
                 name=f"- {other}",
                 backward_fn=_backward,
+                dtype=np.result_type(self.array, other),
             )
 
         elif isinstance(other, Tensor):
@@ -240,6 +247,7 @@ class Tensor:
                 args=(self, other),
                 name="-",
                 backward_fn=_backward,
+                dtype=np.result_type(self.array, other.array),
             )
 
         else:
@@ -268,6 +276,7 @@ class Tensor:
                 args=(self,),
                 name=f"* {other}",
                 backward_fn=_backward,
+                dtype=np.result_type(self.array, other),
             )
 
         elif isinstance(other, Tensor):
@@ -281,6 +290,7 @@ class Tensor:
                 args=(self, other),
                 name="*",
                 backward_fn=_backward,
+                dtype=np.result_type(self.array, other.array),
             )
 
         else:
@@ -312,6 +322,7 @@ class Tensor:
             args=(self, other),
             name="@",
             backward_fn=_backward,
+            dtype=np.result_type(self.array, other.array),
         )
 
         return out
@@ -331,6 +342,7 @@ class Tensor:
                 args=(self,),
                 name=f"** {other}",
                 backward_fn=_backward,
+                dtype=np.result_type(self.array, other),
             )
 
         elif isinstance(other, Tensor):
