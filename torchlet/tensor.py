@@ -1,4 +1,4 @@
-from typing import Union, Callable, Sequence, TypeAlias
+from typing import Union, Callable, Sequence, TypeAlias, Any
 import uuid
 import logging
 
@@ -446,13 +446,21 @@ class Tensor:
         name = f", name={self.name}" if self.name is not None else ""
         return f"Tensor({self.array.__str__()}{name})"
 
-    def __getitem__(self, idx: Union[slice, int]) -> "Tensor":
-        # TODO: Ensure that the gradient is tracked properly
-        return Tensor(self.array[idx], requires_grad=self.requires_grad)
+    def __getitem__(self, idx: Any) -> "Tensor":
+        def _backward(dy: "Tensor") -> None:
+            self.grad[idx] += dy
 
-    def __setitem__(
-        self, idx: Union[slice, int], value: Union[int, float, "Tensor"]
-    ) -> None:
+        return Tensor(
+            self.array[idx],
+            requires_grad=self.requires_grad,
+            dtype=self.dtype,
+            name="getitem",
+            args=(self,),
+            backward_fn=_backward,
+        )
+
+    def __setitem__(self, idx: Any, value: Union[int, float, "Tensor"]) -> None:
+        # TODO: Implement gradient computation
         if isinstance(value, Tensor):
             self.array[idx] = value.array
         else:

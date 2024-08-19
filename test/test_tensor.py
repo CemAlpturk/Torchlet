@@ -224,12 +224,76 @@ def test_tensor_getitem():
     expected_array = np.array([2, 3, 4])
     assert np.array_equal(sliced.array, expected_array)
 
+    array = np.array([[1, 2], [3, 4]])
+    tensor = Tensor(array)
+    sliced = tensor[1]
+    expected_array = np.array([3, 4])
+    assert np.array_equal(sliced.array, expected_array)
+
+    array = np.array([[1, 2], [3, 4]])
+    tensor = Tensor(array)
+    sliced = tensor[:, 1]
+    expected_array = np.array([2, 4])
+    assert np.array_equal(sliced.array, expected_array)
+
+    # Test for negative indices
+    array = np.array([1, 2, 3, 4, 5])
+    tensor = Tensor(array)
+    sliced = tensor[-3:]
+    expected_array = np.array([3, 4, 5])
+    assert np.array_equal(sliced.array, expected_array)
+
+    array = np.array([[1, 2], [3, 4]])
+    tensor = Tensor(array)
+    sliced = tensor[:, -1]
+    expected_array = np.array([2, 4])
+    assert np.array_equal(sliced.array, expected_array)
+
+    array = np.array([[1, 2], [3, 4]])
+    tensor = Tensor(array)
+    sliced = tensor[-1]
+    expected_array = np.array([3, 4])
+    assert np.array_equal(sliced.array, expected_array)
+
+    array = np.array([[1, 2], [3, 4]])
+    tensor = Tensor(array)
+    sliced = tensor[-1, :]
+    expected_array = np.array([3, 4])
+    assert np.array_equal(sliced.array, expected_array)
+
+    # Test gradients
+    array = np.array([1, 2, 3, 4, 5])
+    tensor = Tensor(array)
+    sliced = tensor[1:4]
+    y = sliced.sum()
+    y.backward()
+    expected_array = np.array([0, 1, 1, 1, 0])
+    assert np.array_equal(tensor.grad.array, expected_array)
+
 
 def test_tensor_setitem():
     array = np.array([1, 2, 3, 4, 5])
     tensor = Tensor(array)
     tensor[1:4] = 0
     expected_array = np.array([1, 0, 0, 0, 5])
+    assert np.array_equal(tensor.array, expected_array)
+
+    array = np.array([[1, 2], [3, 4]])
+    tensor = Tensor(array)
+    tensor[1] = 0
+    expected_array = np.array([[1, 2], [0, 0]])
+    assert np.array_equal(tensor.array, expected_array)
+
+    array = np.array([[1, 2], [3, 4]])
+    tensor = Tensor(array)
+    tensor[:, 1] = 0
+    expected_array = np.array([[1, 0], [3, 0]])
+    assert np.array_equal(tensor.array, expected_array)
+
+    array = np.array([[1, 2], [3, 4]])
+    tensor = Tensor(array)
+    tensor[1, :] = 0
+    expected_array = np.array([[1, 2], [0, 0]])
     assert np.array_equal(tensor.array, expected_array)
 
 
