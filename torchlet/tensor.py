@@ -315,8 +315,8 @@ class Tensor:
         """
 
         # def _backward(dy: "Tensor") -> None:
-        #     self.grad += np.dot(dy.array, other.array.T)
-        #     other.grad += np.dot(self.array.T, dy.array)
+        #     self.grad.array += np.dot(dy.array, other.array.T)
+        #     other.grad.array += np.dot(self.array.T, dy.array)
 
         # out = Tensor(
         #     array=np.dot(self.array, other.array),
