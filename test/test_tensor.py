@@ -298,6 +298,7 @@ def test_tensor_setitem():
 
 
 def test_tensor_matmul():
+    # TODO: fix this test
     array1 = np.array([[1, 2], [3, 4]])
     array2 = np.array([[5, 6], [7, 8]])
     tensor1 = Tensor(array1)

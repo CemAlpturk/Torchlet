@@ -1,4 +1,4 @@
-from typing import Union, Callable, Sequence, TypeAlias, Any
+from typing import Union, Callable, Sequence, Any
 import uuid
 import logging
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TYPE = np.float32
 
-INP_TYPE: TypeAlias = Union[float, int, "Tensor"]
+# INP_TYPE: TypeAlias = Union[float, int, "Tensor"]
 
 
 class Tensor:
@@ -214,7 +214,7 @@ class Tensor:
 
         return out
 
-    def __radd__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __radd__(self, other: Union[int, float]) -> "Tensor":
         return self + other
 
     def __iadd__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
@@ -256,7 +256,7 @@ class Tensor:
 
         return out
 
-    def __rsub__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __rsub__(self, other: Union[int, float]) -> "Tensor":
         return other + (-self)
 
     def __isub__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
@@ -299,7 +299,7 @@ class Tensor:
 
         return out
 
-    def __rmul__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __rmul__(self, other: Union[int, float]) -> "Tensor":
         # Multiplication is commutative
         return self * other
 
@@ -314,12 +314,27 @@ class Tensor:
         Matrix multiplication.
         """
 
+        # def _backward(dy: "Tensor") -> None:
+        #     self.grad += np.dot(dy.array, other.array.T)
+        #     other.grad += np.dot(self.array.T, dy.array)
+
+        # out = Tensor(
+        #     array=np.dot(self.array, other.array),
+        #     args=(self, other),
+        #     name="@",
+        #     backward_fn=_backward,
+        #     dtype=np.result_type(self.array, other.array),
+        # )
+
         def _backward(dy: "Tensor") -> None:
-            self.grad += dy @ other.T
-            other.grad += self.T @ dy
+            self.grad.array += np.tensordot(dy.array, other.array, axes=(-1, -1))
+            indices = list(range(dy.ndim - 1))
+            other.grad.array += np.tensordot(
+                self.array, dy.array, axes=(indices, indices)
+            )
 
         out = Tensor(
-            array=self.array @ other.array,
+            array=np.tensordot(self.array, other.array, axes=(-1, 0)),
             args=(self, other),
             name="@",
             backward_fn=_backward,
@@ -356,7 +371,7 @@ class Tensor:
 
         return out
 
-    def __rpow__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __rpow__(self, other: Union[int, float]) -> "Tensor":
         raise NotImplementedError("Exponentiation is not commutative.")
 
     def __ipow__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
@@ -374,13 +389,9 @@ class Tensor:
         else:
             raise NotImplementedError(f"Cannot divide {type(self)} by {type(other)}")
 
-    def __rtruediv__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __rtruediv__(self, other: Union[int, float]) -> "Tensor":
         if isinstance(other, (int, float)):
             return other * (self**-1)
-
-        elif isinstance(other, Tensor):
-            return other * (1 / self)
-
         else:
             raise NotImplementedError(f"Cannot divide {type(other)} by {type(self)}")
 
