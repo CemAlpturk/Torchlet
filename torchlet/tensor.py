@@ -9,27 +9,45 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TYPE = np.float32
 
-# INP_TYPE: TypeAlias = Union[float, int, "Tensor"]
-
 
 class Tensor:
     """
-    N-dimensional grid of numbers.
+    A class representing a tensor object.
+
+    Args:
+        data (ArrayLike): The data of the tensor.
+        dtype (DTypeLike | None, optional): The data type of the tensor. Defaults to None.
+        name (str | None, optional): The name of the tensor. Defaults to None.
+        args (tuple[Tensor, ...] | None, optional): The arguments of the tensor. Defaults to None.
+        backward_fn (Callable[[np.ndarray], None] | None, optional): The backward function of the tensor. Defaults to None.
+
     """
+
+    data: np.ndarray
+    name: str | None
+    _id: int
+    args: tuple["Tensor", ...]
+    grad: np.ndarray
+    backward_fn: Callable[[np.ndarray], None] | None
 
     def __init__(
         self,
         data: ArrayLike,
-        # requires_grad: bool = True,
         dtype: DTypeLike | None = None,
         name: str | None = None,
         args: tuple["Tensor", ...] | None = None,
         backward_fn: Callable[[np.ndarray], None] | None = None,
     ) -> None:
         """
-        Initialize a new Tensor object.
-        TODO: docstring
+        Initializes a Tensor object.
+        Args:
+            data (ArrayLike): The input data for the tensor.
+            dtype (DTypeLike | None, optional): The data type of the tensor. Defaults to None.
+            name (str | None, optional): The name of the tensor. Defaults to None.
+            args (tuple["Tensor", ...] | None, optional): The arguments passed to the tensor. Defaults to None.
+            backward_fn (Callable[[np.ndarray], None] | None, optional): The backward function for gradient computation. Defaults to None.
         """
+
         # Needed?
         if isinstance(data, Tensor):
             self = data
@@ -41,7 +59,6 @@ class Tensor:
             dtype = DEFAULT_TYPE
 
         self.data = self.data.astype(dtype)
-        # self.requires_grad = requires_grad
 
         self.name = name
         self._id = uuid.uuid1().int
