@@ -105,6 +105,15 @@ class Tensor:
     def T(self) -> "Tensor":
         return self.transpose()
 
+    def item(self) -> Union[int, float]:
+        if self.data.size == 1:
+            return self.data.item()
+        else:
+            raise ValueError("Only scalar tensors can be converted to Python scalars")
+
+    def to_numpy(self) -> np.ndarray:
+        return self.data
+
     def reshape(self, shape: Sequence[int]) -> "Tensor":
         # TODO: Implement
         raise NotImplementedError
@@ -168,6 +177,9 @@ class Tensor:
 
         return out
 
+    def size(self) -> int:
+        return self.data.size
+
     def __hash__(self) -> int:
         """
         Return the hash value of the object.
@@ -183,6 +195,9 @@ class Tensor:
 
             def _backward(dy: np.ndarray) -> None:
                 self.grad += dy
+                # Not sure if this is the best idea
+                if self.data.shape != other.data.shape:
+                    dy = dy.sum(axis=0)
                 other.grad += dy
 
             out = Tensor(

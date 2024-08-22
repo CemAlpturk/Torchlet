@@ -10,8 +10,21 @@ python = "^3.11"
 numpy = "^2.0.1"
 
 
+[tool.poetry.group.dev]
+optional = true
+
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
+
+
+[tool.poetry.group.extras]
+optional = true
+
+[tool.poetry.group.extras.dependencies]
+matplotlib = "^3.9.2"
+tqdm = "^4.66.5"
+
 
 [build-system]
 requires = ["poetry-core"]
