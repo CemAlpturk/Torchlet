@@ -16,6 +16,7 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
+graphviz = "^0.20.3"
 
 
 [tool.poetry.group.extras]
