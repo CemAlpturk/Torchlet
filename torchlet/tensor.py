@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Union, Callable, Sequence, Any
 import uuid
 import logging
@@ -26,7 +27,7 @@ class Tensor:
     data: np.ndarray
     name: str | None
     _id: int
-    args: tuple["Tensor", ...]
+    args: tuple[Tensor, ...]
     grad: np.ndarray
     backward_fn: Callable[[np.ndarray], None] | None
 
@@ -35,8 +36,9 @@ class Tensor:
         data: ArrayLike,
         dtype: DTypeLike | None = None,
         name: str | None = None,
-        args: tuple["Tensor", ...] | None = None,
+        args: tuple[Tensor, ...] | None = None,
         backward_fn: Callable[[np.ndarray], None] | None = None,
+        # equires_grad: bool = False,
     ) -> None:
         """
         Initializes a Tensor object.
@@ -44,7 +46,7 @@ class Tensor:
             data (ArrayLike): The input data for the tensor.
             dtype (DTypeLike | None, optional): The data type of the tensor. Defaults to None.
             name (str | None, optional): The name of the tensor. Defaults to None.
-            args (tuple["Tensor", ...] | None, optional): The arguments passed to the tensor. Defaults to None.
+            args (tuple[Tensor, ...] | None, optional): The arguments passed to the tensor. Defaults to None.
             backward_fn (Callable[[np.ndarray], None] | None, optional): The backward function for gradient computation. Defaults to None.
         """
 
@@ -66,19 +68,25 @@ class Tensor:
 
         # TODO: Init as None to save memory?
         self.grad = np.zeros_like(self.data)
-        self.backward_fn = backward_fn
+        # self.requires_grad = requires_grad
+        # self.grad = None
+        self.backward_fn = backward_fn  # if requires_grad else None
 
     def backward(self) -> None:
         """
         Compute the gradient of the tensor.
         """
-        topo: list["Tensor"] = []
+        # if not self.requires_grad:
+        #     raise ValueError("Tensor does not require gradient computation")
+
+        topo: list[Tensor] = []
         visited = set()
 
-        def build_topo(v: "Tensor") -> None:
+        def build_topo(v: Tensor) -> None:
             if v not in visited:
                 visited.add(v)
                 for child in v.args:
+                    # if child.requires_grad:
                     build_topo(child)
                 topo.append(v)
 
@@ -86,8 +94,15 @@ class Tensor:
 
         self.grad = np.ones_like(self.data)
         for v in reversed(topo):
-            if v.backward_fn is not None:
+            if v.backward_fn is not None:  # and v.requires_grad:
                 v.backward_fn(v.grad)
+
+    def zero_grad(self) -> None:
+        """
+        Zero the gradient of the tensor.
+        """
+        # if self.requires_grad:
+        self.grad = np.zeros_like(self.data)
 
     @property
     def shape(self) -> Sequence[int]:
@@ -102,7 +117,7 @@ class Tensor:
         return self.data.dtype
 
     @property
-    def T(self) -> "Tensor":
+    def T(self) -> Tensor:
         return self.transpose()
 
     def item(self) -> Union[int, float]:
@@ -114,11 +129,11 @@ class Tensor:
     def to_numpy(self) -> np.ndarray:
         return self.data
 
-    def reshape(self, shape: Sequence[int]) -> "Tensor":
+    def reshape(self, shape: Sequence[int]) -> Tensor:
         # TODO: Implement
         raise NotImplementedError
 
-    def sum(self) -> "Tensor":
+    def sum(self) -> Tensor:
         def _backward(dy: np.ndarray) -> None:
             self.grad += np.ones_like(self.data) * dy
 
@@ -127,12 +142,13 @@ class Tensor:
             dtype=self.dtype,
             name="sum",
             args=(self,),
-            backward_fn=_backward,
+            backward_fn=_backward,  # if self.requires_grad else None,
+            # requires_grad=self.requires_grad,
         )
 
         return out
 
-    def mean(self) -> "Tensor":
+    def mean(self) -> Tensor:
         def _backward(dy: np.ndarray) -> None:
             grad_divisor = self.data.size
             self.grad += dy / grad_divisor
@@ -147,7 +163,7 @@ class Tensor:
 
         return out
 
-    def transpose(self) -> "Tensor":
+    def transpose(self) -> Tensor:
 
         # TODO: Make sure this is correct
         def _backward(dy: np.ndarray) -> None:
@@ -163,7 +179,7 @@ class Tensor:
 
         return out
 
-    def relu(self) -> "Tensor":
+    def relu(self) -> Tensor:
         def _backward(dy: np.ndarray) -> None:
             self.grad += dy * (self.data > 0)
 
@@ -189,13 +205,14 @@ class Tensor:
         """
         return self._id
 
-    def __add__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __add__(self, other: Union[int, float, Tensor]) -> Tensor:
 
         if isinstance(other, Tensor):
 
             def _backward(dy: np.ndarray) -> None:
                 self.grad += dy
                 # Not sure if this is the best idea
+                # Broadcast cases
                 if self.data.shape != other.data.shape:
                     dy = dy.sum(axis=0)
                 other.grad += dy
@@ -204,8 +221,9 @@ class Tensor:
                 data=self.data + other.data,
                 dtype=np.result_type(self.data, other.data),
                 name="+",
-                args=(self, other),
-                backward_fn=_backward,
+                args=(self, other),  # if self.requires_grad else None,
+                backward_fn=_backward,  # if self.requires_grad else None,
+                # requires_grad=self.requires_grad,
             )
 
         else:
@@ -218,18 +236,19 @@ class Tensor:
                 dtype=np.result_type(self.data, other),
                 name=f"+ {other}",
                 args=(self,),
-                backward_fn=_backward,
+                backward_fn=_backward,  # if self.requires_grad else None,
+                # requires_grad=self.requires_grad,
             )
         return out
 
-    def __radd__(self, other: Union[int, float]) -> "Tensor":
+    def __radd__(self, other: Union[int, float]) -> Tensor:
         return self + other
 
-    def __iadd__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __iadd__(self, other: Union[int, float, Tensor]) -> Tensor:
         self = self + other
         return self
 
-    def __sub__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __sub__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Subtract two tensors.
         """
@@ -262,14 +281,14 @@ class Tensor:
 
         return out
 
-    def __rsub__(self, other: Union[int, float]) -> "Tensor":
+    def __rsub__(self, other: Union[int, float]) -> Tensor:
         return other + (-self)
 
-    def __isub__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __isub__(self, other: Union[int, float, Tensor]) -> Tensor:
         self = self - other
         return self
 
-    def __mul__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __mul__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Multiply two tensors.
         """
@@ -301,17 +320,17 @@ class Tensor:
 
         return out
 
-    def __rmul__(self, other: Union[int, float]) -> "Tensor":
+    def __rmul__(self, other: Union[int, float]) -> Tensor:
         return self * other
 
-    def __imul__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __imul__(self, other: Union[int, float, Tensor]) -> Tensor:
         self = self * other
         return self
 
-    def __neg__(self) -> "Tensor":
+    def __neg__(self) -> Tensor:
         return self * (-1.0)
 
-    def __matmul__(self, other: "Tensor") -> "Tensor":
+    def __matmul__(self, other: Tensor) -> Tensor:
 
         assert isinstance(other, Tensor), "Only supporting matmul with another tensor"
 
@@ -329,7 +348,7 @@ class Tensor:
             backward_fn=_backward,
         )
 
-    def __pow__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __pow__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Exponention.
         """
@@ -349,14 +368,14 @@ class Tensor:
 
         return out
 
-    def __rpow__(self, other: Union[int, float]) -> "Tensor":
+    def __rpow__(self, other: Union[int, float]) -> Tensor:
         raise NotImplementedError("Exponentiation is not commutative.")
 
-    def __ipow__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __ipow__(self, other: Union[int, float, Tensor]) -> Tensor:
         self = self**other
         return self
 
-    def __truediv__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __truediv__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Division.
         """
@@ -366,14 +385,14 @@ class Tensor:
         else:
             return self * (1 / other)
 
-    def __rtruediv__(self, other: Union[int, float]) -> "Tensor":
+    def __rtruediv__(self, other: Union[int, float]) -> Tensor:
         return other * self**-1
 
-    def __itruediv__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __itruediv__(self, other: Union[int, float, Tensor]) -> Tensor:
         self = self / other
         return self
 
-    def __lt__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __lt__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Less than comparison.
         """
@@ -382,7 +401,7 @@ class Tensor:
 
         return Tensor(self.data < other)
 
-    def __le__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __le__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Less than or equal to comparison.
         """
@@ -391,7 +410,7 @@ class Tensor:
 
         return Tensor(self.data <= other)
 
-    def __eq__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __eq__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Equal to comparison.
         """
@@ -402,7 +421,7 @@ class Tensor:
 
         return Tensor(self.data == other)
 
-    def __ne__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __ne__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Not equal to comparison.
         """
@@ -411,7 +430,7 @@ class Tensor:
 
         return Tensor(self.data != other)
 
-    def __gt__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __gt__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Greater than comparison.
         """
@@ -420,7 +439,7 @@ class Tensor:
 
         return Tensor(self.data > other)
 
-    def __ge__(self, other: Union[int, float, "Tensor"]) -> "Tensor":
+    def __ge__(self, other: Union[int, float, Tensor]) -> Tensor:
         """
         Greater than or equal to comparison.
         """
@@ -433,7 +452,7 @@ class Tensor:
         name = f", name={self.name}" if self.name is not None else ""
         return f"Tensor({self.data.__str__()}{name})"
 
-    def __getitem__(self, idx: Any) -> "Tensor":
+    def __getitem__(self, idx: Any) -> Tensor:
         def _backward(dy: np.ndarray) -> None:
             self.grad[idx] += dy
 
@@ -445,7 +464,7 @@ class Tensor:
             backward_fn=_backward,
         )
 
-    def __setitem__(self, idx: Any, value: Union[int, float, "Tensor"]) -> None:
+    def __setitem__(self, idx: Any, value: Union[int, float, Tensor]) -> None:
         # TODO: Implement gradient computation
         if isinstance(value, Tensor):
             self.data[idx] = value.data
