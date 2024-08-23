@@ -1,5 +1,6 @@
 import numpy as np
 from torchlet.tensor import Tensor
+import pytest
 
 
 def test_tensor_init():
@@ -10,13 +11,18 @@ def test_tensor_init():
     assert tensor.name is None
     assert tensor.args == ()
     assert tensor._id is not None
+    assert tensor.requires_grad is False
 
 
 def test_tensor_backward():
     array = np.array([1, 2, 3])
-    tensor = Tensor(array)
+    tensor = Tensor(array, requires_grad=True)
     tensor.backward()
     assert np.array_equal(tensor.grad, np.ones_like(array))
+
+    tensor = Tensor(array, requires_grad=False)
+    with pytest.raises(ValueError):
+        tensor.backward()
 
 
 def test_tensor_shape():
@@ -50,8 +56,8 @@ def test_tensor_relu():
 def test_tensor_add():
     array1 = np.array([1, 2, 3])
     array2 = np.array([4, 5, 6])
-    tensor1 = Tensor(array1)
-    tensor2 = Tensor(array2)
+    tensor1 = Tensor(array1, requires_grad=True)
+    tensor2 = Tensor(array2, requires_grad=True)
     added = tensor1 + tensor2
     expected_array = np.array([5, 7, 9])
     assert np.array_equal(added.data, expected_array)
@@ -62,7 +68,7 @@ def test_tensor_add():
     assert np.array_equal(tensor1.grad, expected)
     assert np.array_equal(tensor2.grad, expected)
 
-    tensor = Tensor(array1)
+    tensor = Tensor(array1, requires_grad=True)
     value = 5
     added = tensor + value
     expected_array = np.array([6, 7, 8])
@@ -70,7 +76,7 @@ def test_tensor_add():
     added.backward()
     assert np.array_equal(tensor.grad, np.ones_like(array1))
 
-    tensor = Tensor(array1)
+    tensor = Tensor(array1, requires_grad=True)
     value = 5
     added = value + tensor
     expected_array = np.array([6, 7, 8])
@@ -82,8 +88,8 @@ def test_tensor_add():
 def test_tensor_sub():
     array1 = np.array([4, 5, 6])
     array2 = np.array([1, 2, 3])
-    tensor1 = Tensor(array1)
-    tensor2 = Tensor(array2)
+    tensor1 = Tensor(array1, requires_grad=True)
+    tensor2 = Tensor(array2, requires_grad=True)
     subtracted = tensor1 - tensor2
     expected_array = np.array([3, 3, 3])
     assert np.array_equal(subtracted.data, expected_array)
@@ -91,7 +97,7 @@ def test_tensor_sub():
     assert np.array_equal(tensor1.grad, np.ones_like(array1))
     assert np.array_equal(tensor2.grad, -np.ones_like(array2))
 
-    tensor = Tensor(array1)
+    tensor = Tensor(array1, requires_grad=True)
     value = 2
     subtracted = tensor - value
     expected_array = np.array([2, 3, 4])
@@ -99,7 +105,7 @@ def test_tensor_sub():
     subtracted.backward()
     assert np.array_equal(tensor.grad, np.ones_like(array1))
 
-    tensor = Tensor(array1)
+    tensor = Tensor(array1, requires_grad=True)
     value = 2
     subtracted = value - tensor
     expected_array = np.array([-2, -3, -4])
@@ -111,8 +117,8 @@ def test_tensor_sub():
 def test_tensor_mul():
     array1 = np.array([1, 2, 3])
     array2 = np.array([4, 5, 6])
-    tensor1 = Tensor(array1)
-    tensor2 = Tensor(array2)
+    tensor1 = Tensor(array1, requires_grad=True)
+    tensor2 = Tensor(array2, requires_grad=True)
     multiplied = tensor1 * tensor2
     expected_array = np.array([4, 10, 18])
     assert np.array_equal(multiplied.data, expected_array)
@@ -120,7 +126,7 @@ def test_tensor_mul():
     assert np.array_equal(tensor1.grad, array2)
     assert np.array_equal(tensor2.grad, array1)
 
-    tensor = Tensor(array1)
+    tensor = Tensor(array1, requires_grad=True)
     value = 2
     multiplied = tensor * value
     expected_array = np.array([2, 4, 6])
@@ -128,7 +134,7 @@ def test_tensor_mul():
     multiplied.backward()
     assert np.array_equal(tensor.grad, value * np.ones_like(array1))
 
-    tensor = Tensor(array1)
+    tensor = Tensor(array1, requires_grad=True)
     value = 2
     multiplied = value * tensor
     expected_array = np.array([2, 4, 6])
@@ -139,7 +145,7 @@ def test_tensor_mul():
 
 def test_tensor_pow():
     array = np.array([2, 3, 4])
-    tensor = Tensor(array)
+    tensor = Tensor(array, requires_grad=True)
     powered = tensor**2
     expected_array = np.array([4, 9, 16])
     assert np.array_equal(powered.data, expected_array)
@@ -150,8 +156,8 @@ def test_tensor_pow():
 def test_tensor_div():
     array1 = np.array([4, 6, 8])
     array2 = np.array([2, 3, 4])
-    tensor1 = Tensor(array1)
-    tensor2 = Tensor(array2)
+    tensor1 = Tensor(array1, requires_grad=True)
+    tensor2 = Tensor(array2, requires_grad=True)
     divided = tensor1 / tensor2
     expected_array = np.array([2, 2, 2])
     assert np.array_equal(divided.data, expected_array)
@@ -159,7 +165,7 @@ def test_tensor_div():
     assert np.all(np.isclose(tensor1.grad, 1 / array2))
     assert np.all(np.isclose(tensor2.grad, -array1 / array2**2))
 
-    tensor = Tensor(array1)
+    tensor = Tensor(array1, requires_grad=True)
     value = 2
     divided = tensor / value
     expected_array = np.array([2, 3, 4])
@@ -167,7 +173,7 @@ def test_tensor_div():
     divided.backward()
     assert np.array_equal(tensor.grad, 1 / value * np.ones_like(array1))
 
-    tensor = Tensor(array1)
+    tensor = Tensor(array1, requires_grad=True)
     value = 2
     divided = value / tensor
     expected_array = np.array([0.5, 1 / 3, 0.25])
@@ -252,7 +258,7 @@ def test_tensor_getitem():
 
     # Test gradients
     array = np.array([1, 2, 3, 4, 5])
-    tensor = Tensor(array)
+    tensor = Tensor(array, requires_grad=True)
     sliced = tensor[1:4]
     y = sliced.sum()
     y.backward()
@@ -289,8 +295,8 @@ def test_tensor_setitem():
 def test_tensor_matmul():
     array1 = np.array([[1, 2], [3, 4]])
     array2 = np.array([[5, 6], [7, 8]])
-    tensor1 = Tensor(array1)
-    tensor2 = Tensor(array2)
+    tensor1 = Tensor(array1, requires_grad=True)
+    tensor2 = Tensor(array2, requires_grad=True)
     matmul = tensor1 @ tensor2
     expected_array = array1 @ array2
     assert np.array_equal(matmul.data, expected_array)
@@ -306,7 +312,7 @@ def test_numerical_grad():
         h = (z * z).relu()
         return h + q + q * x
 
-    x1 = Tensor(10.0, dtype=np.float64)
+    x1 = Tensor(10.0, dtype=np.float64, requires_grad=True)
     y1 = f(x1)
 
     y1.backward()
