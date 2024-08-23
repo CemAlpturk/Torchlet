@@ -30,6 +30,7 @@ class Tensor:
     args: tuple[Tensor, ...]
     grad: np.ndarray
     backward_fn: Callable[[np.ndarray], None] | None
+    requires_grad: bool
 
     def __init__(
         self,
@@ -38,7 +39,7 @@ class Tensor:
         name: str | None = None,
         args: tuple[Tensor, ...] | None = None,
         backward_fn: Callable[[np.ndarray], None] | None = None,
-        # equires_grad: bool = False,
+        requires_grad: bool = False,
     ) -> None:
         """
         Initializes a Tensor object.
@@ -68,16 +69,16 @@ class Tensor:
 
         # TODO: Init as None to save memory?
         self.grad = np.zeros_like(self.data)
-        # self.requires_grad = requires_grad
+        self.requires_grad = requires_grad
         # self.grad = None
-        self.backward_fn = backward_fn  # if requires_grad else None
+        self.backward_fn = backward_fn if requires_grad else None
 
     def backward(self) -> None:
         """
         Compute the gradient of the tensor.
         """
-        # if not self.requires_grad:
-        #     raise ValueError("Tensor does not require gradient computation")
+        if not self.requires_grad:
+            raise ValueError("Tensor does not require gradient computation")
 
         topo: list[Tensor] = []
         visited = set()
@@ -86,23 +87,23 @@ class Tensor:
             if v not in visited:
                 visited.add(v)
                 for child in v.args:
-                    # if child.requires_grad:
-                    build_topo(child)
+                    if child.requires_grad:
+                        build_topo(child)
                 topo.append(v)
 
         build_topo(self)
 
         self.grad = np.ones_like(self.data)
         for v in reversed(topo):
-            if v.backward_fn is not None:  # and v.requires_grad:
+            if v.backward_fn is not None and v.requires_grad:
                 v.backward_fn(v.grad)
 
     def zero_grad(self) -> None:
         """
         Zero the gradient of the tensor.
         """
-        # if self.requires_grad:
-        self.grad = np.zeros_like(self.data)
+        if self.requires_grad:
+            self.grad = np.zeros_like(self.data)
 
     @property
     def shape(self) -> Sequence[int]:
@@ -141,9 +142,9 @@ class Tensor:
             data=np.sum(self.data),
             dtype=self.dtype,
             name="sum",
-            args=(self,),
-            backward_fn=_backward,  # if self.requires_grad else None,
-            # requires_grad=self.requires_grad,
+            args=(self,) if self.requires_grad else None,
+            backward_fn=_backward if self.requires_grad else None,
+            requires_grad=self.requires_grad,
         )
 
         return out
@@ -157,8 +158,9 @@ class Tensor:
             data=np.mean(self.data),
             dtype=self.dtype,
             name="mean",
-            args=(self,),
-            backward_fn=_backward,
+            args=(self,) if self.requires_grad else None,
+            backward_fn=_backward if self.requires_grad else None,
+            requires_grad=self.requires_grad,
         )
 
         return out
@@ -173,8 +175,9 @@ class Tensor:
             data=self.data.T,
             dtype=self.dtype,
             name="transpose",
-            args=(self,),
-            backward_fn=_backward,
+            args=(self,) if self.requires_grad else None,
+            backward_fn=_backward if self.requires_grad else None,
+            requires_grad=self.requires_grad,
         )
 
         return out
@@ -187,8 +190,9 @@ class Tensor:
             data=np.maximum(0, self.data),
             dtype=self.dtype,
             name="ReLU",
-            args=(self,),
-            backward_fn=_backward,
+            args=(self,) if self.requires_grad else None,
+            backward_fn=_backward if self.requires_grad else None,
+            requires_grad=self.requires_grad,
         )
 
         return out
@@ -217,13 +221,14 @@ class Tensor:
                     dy = dy.sum(axis=0)
                 other.grad += dy
 
+            requires_grad = self.requires_grad or other.requires_grad
             out = Tensor(
                 data=self.data + other.data,
                 dtype=np.result_type(self.data, other.data),
                 name="+",
-                args=(self, other),  # if self.requires_grad else None,
-                backward_fn=_backward,  # if self.requires_grad else None,
-                # requires_grad=self.requires_grad,
+                args=(self, other) if requires_grad else None,
+                backward_fn=_backward if requires_grad else None,
+                requires_grad=requires_grad,
             )
 
         else:
@@ -235,9 +240,9 @@ class Tensor:
                 data=self.data + other,
                 dtype=np.result_type(self.data, other),
                 name=f"+ {other}",
-                args=(self,),
-                backward_fn=_backward,  # if self.requires_grad else None,
-                # requires_grad=self.requires_grad,
+                args=(self,) if self.requires_grad else None,
+                backward_fn=_backward if self.requires_grad else None,
+                requires_grad=self.requires_grad,
             )
         return out
 
@@ -258,12 +263,14 @@ class Tensor:
                 self.grad += dy
                 other.grad -= dy
 
+            requires_grad = self.requires_grad or other.requires_grad
             out = Tensor(
                 data=self.data - other.data,
                 dtype=np.result_type(self.data, other.data),
                 name="-",
-                args=(self, other),
-                backward_fn=_backward,
+                args=(self, other) if requires_grad else None,
+                backward_fn=_backward if requires_grad else None,
+                requires_grad=requires_grad,
             )
 
         else:
@@ -275,8 +282,9 @@ class Tensor:
                 data=self.data - other,
                 dtype=np.result_type(self.data, other),
                 name=f"- {other}",
-                args=(self,),
-                backward_fn=_backward,
+                args=(self,) if self.requires_grad else None,
+                backward_fn=_backward if self.requires_grad else None,
+                requires_grad=self.requires_grad,
             )
 
         return out
@@ -298,12 +306,14 @@ class Tensor:
                 self.grad += other.data * dy
                 other.grad += self.data * dy
 
+            requires_grad = self.requires_grad or other.requires_grad
             out = Tensor(
                 data=self.data * other.data,
                 dtype=np.result_type(self.data, other.data),
                 name="*",
-                args=(self, other),
-                backward_fn=_backward,
+                args=(self, other) if requires_grad else None,
+                backward_fn=_backward if requires_grad else None,
+                requires_grad=requires_grad,
             )
         else:
             # The gradient of the number can be ignored
@@ -314,8 +324,9 @@ class Tensor:
                 data=self.data * other,
                 dtype=np.result_type(self.data, other),
                 name=f"* {other}",
-                args=(self,),
-                backward_fn=_backward,
+                args=(self,) if self.requires_grad else None,
+                backward_fn=_backward if self.requires_grad else None,
+                requires_grad=self.requires_grad,
             )
 
         return out
@@ -340,12 +351,14 @@ class Tensor:
             indices = list(range(dy.ndim - 1))
             other.grad += np.tensordot(self.data, dy, axes=(indices, indices))
 
+        requires_grad = self.requires_grad or other.requires_grad
         return Tensor(
             data=np.tensordot(self.data, other.data, axes=(-1, 0)),
             dtype=np.result_type(self.data, other.data),
             name="@",
-            args=(self, other),
-            backward_fn=_backward,
+            args=(self, other) if requires_grad else None,
+            backward_fn=_backward if requires_grad else None,
+            requires_grad=requires_grad,
         )
 
     def __pow__(self, other: Union[int, float, Tensor]) -> Tensor:
@@ -362,8 +375,9 @@ class Tensor:
             data=self.data**other,
             dtype=np.result_type(self.data, other),
             name=f"** {other}",
-            args=(self,),
-            backward_fn=_backward,
+            args=(self,) if self.requires_grad else None,
+            backward_fn=_backward if self.requires_grad else None,
+            requires_grad=self.requires_grad,
         )
 
         return out
@@ -460,8 +474,9 @@ class Tensor:
             data=self.data[idx],
             dtype=self.dtype,
             name="getitem",
-            args=(self,),
-            backward_fn=_backward,
+            args=(self,) if self.requires_grad else None,
+            backward_fn=_backward if self.requires_grad else None,
+            requires_grad=self.requires_grad,
         )
 
     def __setitem__(self, idx: Any, value: Union[int, float, Tensor]) -> None:

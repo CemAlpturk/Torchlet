@@ -35,33 +35,16 @@ class Linear(Module):
     """
 
     def __init__(self, in_features: int, out_features: int) -> None:
-        self.W = Tensor(data=np.random.uniform(-1, 1, (in_features, out_features)))
-        self.b = Tensor(data=np.zeros((out_features,)))
+        self.W = Tensor(
+            data=np.random.uniform(-1, 1, (in_features, out_features)),
+            requires_grad=True,
+        )
+        self.b = Tensor(
+            data=np.zeros((out_features,)),
+            requires_grad=True,
+        )
 
     def forward(self, x: Tensor) -> Tensor:
-        # z = x @ self.W
-
-        # # Manually add the backward function
-        # # This is due to the broadcast of the bias term
-        # # Until I find a better way to do this
-
-        # result = z.data + self.b.data
-
-        # def _backward(dy: np.ndarray) -> None:
-        #     z.grad += dy
-        #     if z.shape != self.b.shape:
-        #         dy = dy.sum(axis=0)
-        #     self.b.grad += dy
-
-        # out = Tensor(
-        #     data=result,
-        #     dtype=z.dtype,
-        #     name="bias_broadcast",
-        #     backward_fn=_backward,
-        # )
-
-        # return out
-
         return x @ self.W + self.b
 
     def parameters(self) -> list[Tensor]:
