@@ -71,7 +71,6 @@ class Tensor:
         # TODO: Init as None to save memory?
         self.grad = np.zeros_like(self.data)
         self.requires_grad = requires_grad
-        # self.grad = None
         self.backward_fn = backward_fn if requires_grad else None
 
     def backward(self) -> None:
