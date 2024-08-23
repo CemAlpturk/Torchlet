@@ -49,6 +49,7 @@ class Tensor:
             name (str | None, optional): The name of the tensor. Defaults to None.
             args (tuple[Tensor, ...] | None, optional): The arguments passed to the tensor. Defaults to None.
             backward_fn (Callable[[np.ndarray], None] | None, optional): The backward function for gradient computation. Defaults to None.
+            requires_grad (bool, optional): Whether the tensor requires gradient computation. Defaults to False.
         """
 
         # Needed?
