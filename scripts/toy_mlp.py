@@ -135,10 +135,6 @@ def main(args: argparse.Namespace) -> None:
         test_size=args.test_size,
         verbose=not args.silent,
     )
-    # X_train = X
-    # y_train = y
-    # X_test = X
-    # y_test = y
 
     # Define the model based on num hidden layers and hidden size
     n_in = X.shape[1]
