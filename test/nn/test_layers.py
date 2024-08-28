@@ -1,7 +1,11 @@
 import pytest
 import numpy as np
 from torchlet import Tensor
-from torchlet.nn import Linear, Module
+from torchlet.nn import (
+    Module,
+    Linear,
+    Dropout,
+)
 
 
 @pytest.mark.parametrize("in_features", [1, 2, 3])
@@ -93,3 +97,55 @@ class TestLinear:
         assert parameters[0].data.shape == (in_features, out_features)
         if bias:
             assert parameters[1].data.shape == (out_features,)
+
+
+class TestDropout:
+
+    @pytest.mark.parametrize("prob", [0.0, 0.5, 0.9])
+    def test_init(self, prob: float) -> None:
+        dropout = Dropout(prob)
+
+        assert isinstance(dropout, Module)
+        assert dropout.prob == prob
+        assert dropout._coeff == 1 / (1 - prob)
+
+    @pytest.mark.parametrize("prob", [0.0, 0.5, 0.9])
+    def test_forward(self, prob: float) -> None:
+        dropout = Dropout(prob)
+
+        # Test during training
+        dropout.train()
+        x = Tensor(np.ones((10, 10)))
+        y = dropout(x)
+
+        assert isinstance(y, Tensor)
+        assert y.data.shape == (10, 10)
+
+        # Test during evaluation
+        dropout.eval()
+        y = dropout(x)
+
+        assert isinstance(y, Tensor)
+        assert y.data.shape == (10, 10)
+        assert np.allclose(y.data, x.data)
+
+    def test_forward_with_zero_probability(self) -> None:
+        prob = 0.0
+        dropout = Dropout(prob)
+
+        # Test during training
+        dropout.train()
+        x = Tensor(np.ones((10, 10)))
+        y = dropout(x)
+
+        assert isinstance(y, Tensor)
+        assert y.data.shape == (10, 10)
+        assert np.allclose(y.data, x.data)
+
+        # Test during evaluation
+        dropout.eval()
+        y = dropout(x)
+
+        assert isinstance(y, Tensor)
+        assert y.data.shape == (10, 10)
+        assert np.allclose(y.data, x.data)

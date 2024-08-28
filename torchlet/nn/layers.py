@@ -48,3 +48,29 @@ class Linear(Module):
 
     def __repr__(self) -> str:
         return f"Linear({self.W.data.shape[0]}, {self.W.data.shape[1]}, bias={self.b is not None})"
+
+
+class Dropout(Module):
+    """
+    Dropout layer.
+    """
+
+    prob: float
+    _coeff: float
+
+    def __init__(self, prob: float) -> None:
+        super().__init__()
+        if prob < 0 or prob >= 1:
+            raise ValueError("Dropout probability must be in the range [0, 1)")
+        self.prob = prob
+        self._coeff = 1 / (1 - prob)
+
+    def forward(self, x: Tensor) -> Tensor:
+
+        if self.training:
+            mask = np.random.uniform(0, 1, x.data.shape) > self.prob
+            mask = mask * self._coeff
+            mask = Tensor(mask, dtype=x.dtype)
+            return x * mask
+
+        return x
