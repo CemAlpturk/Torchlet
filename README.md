@@ -1,4 +1,12 @@
 # Torchlet
+
+<div align="center">
+  <figure>
+    <img alt="torchlet_logo" src="assets/torchlet.png">
+  </figure>
+</div>
+
+
 A small, minimalist variant of Pytorch. Built for educational purposes.
 
 ## Notes
