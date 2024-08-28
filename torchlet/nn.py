@@ -63,6 +63,24 @@ class ReLU(Module):
         return "ReLU()"
 
 
+class Sigmoid(Module):
+
+    def forward(self, x: Tensor) -> Tensor:
+        return x.sigmoid()
+
+    def __repr__(self) -> str:
+        return "Sigmoid()"
+
+
+class Tanh(Module):
+
+    def forward(self, x: Tensor) -> Tensor:
+        return x.tanh()
+
+    def __repr__(self) -> str:
+        return "Tanh()"
+
+
 class Sequential(Module):
     def __init__(self, *args: Module) -> None:
         self.modules = args

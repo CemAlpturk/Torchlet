@@ -135,67 +135,34 @@ class Tensor:
         raise NotImplementedError
 
     def sum(self) -> Tensor:
-        def _backward(dy: np.ndarray) -> None:
-            self.grad += np.ones_like(self.data) * dy
+        from torchlet.functions import sum
 
-        out = Tensor(
-            data=np.sum(self.data),
-            dtype=self.dtype,
-            name="sum",
-            args=(self,) if self.requires_grad else None,
-            backward_fn=_backward if self.requires_grad else None,
-            requires_grad=self.requires_grad,
-        )
-
-        return out
+        return sum(self)
 
     def mean(self) -> Tensor:
-        def _backward(dy: np.ndarray) -> None:
-            grad_divisor = self.data.size
-            self.grad += dy / grad_divisor
+        from torchlet.functions import mean
 
-        out = Tensor(
-            data=np.mean(self.data),
-            dtype=self.dtype,
-            name="mean",
-            args=(self,) if self.requires_grad else None,
-            backward_fn=_backward if self.requires_grad else None,
-            requires_grad=self.requires_grad,
-        )
-
-        return out
+        return mean(self)
 
     def transpose(self) -> Tensor:
+        from torchlet.functions import transpose
 
-        # TODO: Make sure this is correct
-        def _backward(dy: np.ndarray) -> None:
-            self.grad += dy.transpose()
-
-        out = Tensor(
-            data=self.data.T,
-            dtype=self.dtype,
-            name="transpose",
-            args=(self,) if self.requires_grad else None,
-            backward_fn=_backward if self.requires_grad else None,
-            requires_grad=self.requires_grad,
-        )
-
-        return out
+        return transpose(self)
 
     def relu(self) -> Tensor:
-        def _backward(dy: np.ndarray) -> None:
-            self.grad += dy * (self.data > 0)
+        from torchlet.functions import relu
 
-        out = Tensor(
-            data=np.maximum(0, self.data),
-            dtype=self.dtype,
-            name="ReLU",
-            args=(self,) if self.requires_grad else None,
-            backward_fn=_backward if self.requires_grad else None,
-            requires_grad=self.requires_grad,
-        )
+        return relu(self)
 
-        return out
+    def sigmoid(self) -> Tensor:
+        from torchlet.functions import sigmoid
+
+        return sigmoid(self)
+
+    def tanh(self) -> Tensor:
+        from torchlet.functions import tanh
+
+        return tanh(self)
 
     def size(self) -> int:
         return self.data.size
@@ -209,132 +176,54 @@ class Tensor:
         """
         return self._id
 
-    def __add__(self, other: Union[int, float, Tensor]) -> Tensor:
-
+    def __add__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         if isinstance(other, Tensor):
+            from torchlet.functions import tensor_add
 
-            def _backward(dy: np.ndarray) -> None:
-                self.grad += dy
-                # Not sure if this is the best idea
-                # Broadcast cases
-                if self.data.shape != other.data.shape:
-                    dy = dy.sum(axis=0)
-                other.grad += dy
-
-            requires_grad = self.requires_grad or other.requires_grad
-            out = Tensor(
-                data=self.data + other.data,
-                dtype=np.result_type(self.data, other.data),
-                name="+",
-                args=(self, other) if requires_grad else None,
-                backward_fn=_backward if requires_grad else None,
-                requires_grad=requires_grad,
-            )
-
+            return tensor_add(self, other)
         else:
+            from torchlet.functions import constant_add
 
-            def _backward(dy: np.ndarray) -> None:
-                self.grad += dy
+            return constant_add(self, other)
 
-            out = Tensor(
-                data=self.data + other,
-                dtype=np.result_type(self.data, other),
-                name=f"+ {other}",
-                args=(self,) if self.requires_grad else None,
-                backward_fn=_backward if self.requires_grad else None,
-                requires_grad=self.requires_grad,
-            )
-        return out
-
-    def __radd__(self, other: Union[int, float]) -> Tensor:
+    def __radd__(self, other: np.ndarray | float | int) -> Tensor:
         return self + other
 
-    def __iadd__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __iadd__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         self = self + other
         return self
 
-    def __sub__(self, other: Union[int, float, Tensor]) -> Tensor:
-        """
-        Subtract two tensors.
-        """
+    def __sub__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         if isinstance(other, Tensor):
-            # The gradient of the tensor must be computed.
-            def _backward(dy: np.ndarray) -> None:
-                self.grad += dy
-                other.grad -= dy
+            from torchlet.functions import tensor_subtract
 
-            requires_grad = self.requires_grad or other.requires_grad
-            out = Tensor(
-                data=self.data - other.data,
-                dtype=np.result_type(self.data, other.data),
-                name="-",
-                args=(self, other) if requires_grad else None,
-                backward_fn=_backward if requires_grad else None,
-                requires_grad=requires_grad,
-            )
-
+            return tensor_subtract(self, other)
         else:
+            from torchlet.functions import constant_subtract
 
-            def _backward(dy: np.ndarray) -> None:
-                self.grad += dy
+            return constant_subtract(self, other)
 
-            out = Tensor(
-                data=self.data - other,
-                dtype=np.result_type(self.data, other),
-                name=f"- {other}",
-                args=(self,) if self.requires_grad else None,
-                backward_fn=_backward if self.requires_grad else None,
-                requires_grad=self.requires_grad,
-            )
-
-        return out
-
-    def __rsub__(self, other: Union[int, float]) -> Tensor:
+    def __rsub__(self, other: np.ndarray | float | int) -> Tensor:
         return other + (-self)
 
-    def __isub__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __isub__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         self = self - other
         return self
 
-    def __mul__(self, other: Union[int, float, Tensor]) -> Tensor:
-        """
-        Multiply two tensors.
-        """
+    def __mul__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         if isinstance(other, Tensor):
-            # The gradient of the tensor must be computed
-            def _backward(dy: np.ndarray) -> None:
-                self.grad += other.data * dy
-                other.grad += self.data * dy
+            from torchlet.functions import tensor_multiply
 
-            requires_grad = self.requires_grad or other.requires_grad
-            out = Tensor(
-                data=self.data * other.data,
-                dtype=np.result_type(self.data, other.data),
-                name="*",
-                args=(self, other) if requires_grad else None,
-                backward_fn=_backward if requires_grad else None,
-                requires_grad=requires_grad,
-            )
+            return tensor_multiply(self, other)
         else:
-            # The gradient of the number can be ignored
-            def _backward(dy: np.ndarray) -> None:
-                self.grad += other * dy
+            from torchlet.functions import constant_multiply
 
-            out = Tensor(
-                data=self.data * other,
-                dtype=np.result_type(self.data, other),
-                name=f"* {other}",
-                args=(self,) if self.requires_grad else None,
-                backward_fn=_backward if self.requires_grad else None,
-                requires_grad=self.requires_grad,
-            )
+            return constant_multiply(self, other)
 
-        return out
-
-    def __rmul__(self, other: Union[int, float]) -> Tensor:
+    def __rmul__(self, other: np.ndarray | float | int) -> Tensor:
         return self * other
 
-    def __imul__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __imul__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         self = self * other
         return self
 
@@ -345,68 +234,37 @@ class Tensor:
 
         assert isinstance(other, Tensor), "Only supporting matmul with another tensor"
 
-        # Interesting implementation
-        def _backward(dy: np.ndarray) -> None:
-            self.grad += np.tensordot(dy, other.data, axes=(-1, -1))
-            indices = list(range(dy.ndim - 1))
-            other.grad += np.tensordot(self.data, dy, axes=(indices, indices))
+        from torchlet.functions import tensor_matmul
 
-        requires_grad = self.requires_grad or other.requires_grad
-        return Tensor(
-            data=np.tensordot(self.data, other.data, axes=(-1, 0)),
-            dtype=np.result_type(self.data, other.data),
-            name="@",
-            args=(self, other) if requires_grad else None,
-            backward_fn=_backward if requires_grad else None,
-            requires_grad=requires_grad,
-        )
+        return tensor_matmul(self, other)
 
-    def __pow__(self, other: Union[int, float, Tensor]) -> Tensor:
-        """
-        Exponention.
-        """
-        if isinstance(other, Tensor):
-            raise NotImplementedError("Exponentiation of two tensors is not supported.")
+    def __pow__(self, other: float | int) -> Tensor:
+        from torchlet.functions import scalar_power
 
-        def _backward(dy: np.ndarray) -> None:
-            self.grad += (other * self.data ** (other - 1)) * dy
+        return scalar_power(self, other)
 
-        out = Tensor(
-            data=self.data**other,
-            dtype=np.result_type(self.data, other),
-            name=f"** {other}",
-            args=(self,) if self.requires_grad else None,
-            backward_fn=_backward if self.requires_grad else None,
-            requires_grad=self.requires_grad,
-        )
-
-        return out
-
-    def __rpow__(self, other: Union[int, float]) -> Tensor:
+    def __rpow__(self, other: float | int) -> Tensor:
         raise NotImplementedError("Exponentiation is not commutative.")
 
-    def __ipow__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __ipow__(self, other: float | int) -> Tensor:
         self = self**other
         return self
 
-    def __truediv__(self, other: Union[int, float, Tensor]) -> Tensor:
-        """
-        Division.
-        """
+    def __truediv__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         if isinstance(other, Tensor):
             return self * (other**-1)
 
         else:
             return self * (1 / other)
 
-    def __rtruediv__(self, other: Union[int, float]) -> Tensor:
+    def __rtruediv__(self, other: np.ndarray | float | int) -> Tensor:
         return other * self**-1
 
-    def __itruediv__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __itruediv__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         self = self / other
         return self
 
-    def __lt__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __lt__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         """
         Less than comparison.
         """
@@ -415,7 +273,7 @@ class Tensor:
 
         return Tensor(self.data < other)
 
-    def __le__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __le__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         """
         Less than or equal to comparison.
         """
@@ -424,7 +282,7 @@ class Tensor:
 
         return Tensor(self.data <= other)
 
-    def __eq__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __eq__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         """
         Equal to comparison.
         """
@@ -435,7 +293,7 @@ class Tensor:
 
         return Tensor(self.data == other)
 
-    def __ne__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __ne__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         """
         Not equal to comparison.
         """
@@ -444,7 +302,7 @@ class Tensor:
 
         return Tensor(self.data != other)
 
-    def __gt__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __gt__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         """
         Greater than comparison.
         """
@@ -453,7 +311,7 @@ class Tensor:
 
         return Tensor(self.data > other)
 
-    def __ge__(self, other: Union[int, float, Tensor]) -> Tensor:
+    def __ge__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
         """
         Greater than or equal to comparison.
         """
@@ -467,21 +325,11 @@ class Tensor:
         return f"Tensor({self.data.__str__()}{name})"
 
     def __getitem__(self, idx: Any) -> Tensor:
-        def _backward(dy: np.ndarray) -> None:
-            self.grad[idx] += dy
+        from torchlet.functions import tensor_getitem
 
-        return Tensor(
-            data=self.data[idx],
-            dtype=self.dtype,
-            name="getitem",
-            args=(self,) if self.requires_grad else None,
-            backward_fn=_backward if self.requires_grad else None,
-            requires_grad=self.requires_grad,
-        )
+        return tensor_getitem(self, idx)
 
     def __setitem__(self, idx: Any, value: Union[int, float, Tensor]) -> None:
-        # TODO: Implement gradient computation
-        if isinstance(value, Tensor):
-            self.data[idx] = value.data
-        else:
-            self.data[idx] = value
+        from torchlet.functions import tensor_setitem
+
+        tensor_setitem(self, idx, value)
