@@ -17,6 +17,8 @@ class Linear(Module):
     ) -> None:
         # TODO: Initialization methods
 
+        super().__init__()
+
         if in_features <= 0:
             raise ValueError("in_features must be greater than 0")
         if out_features <= 0:

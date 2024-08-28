@@ -8,6 +8,11 @@ class Module(ABC):
     Base class for all neural network modules.
     """
 
+    training: bool
+
+    def __init__(self) -> None:
+        self.training = True
+
     def parameters(self) -> list[Tensor]:
         """
         Return a list of all learnable parameters.
@@ -30,6 +35,18 @@ class Module(ABC):
         Forward pass of the module.
         """
         raise NotImplementedError
+
+    def train(self) -> None:
+        """
+        Set the module to training mode.
+        """
+        self.training = True
+
+    def eval(self) -> None:
+        """
+        Set the module to evaluation mode.
+        """
+        self.training = False
 
     def __call__(self, *args, **kwargs) -> Tensor:
         return self.forward(*args, **kwargs)
