@@ -4,7 +4,11 @@ import argparse
 import numpy as np
 
 from torchlet.tensor import Tensor
-from torchlet.nn import Linear, ReLU, Sequential
+from torchlet.nn import (
+    Sequential,
+    Linear,
+    ReLU,
+)
 
 try:
     import matplotlib.pyplot as plt
