@@ -32,6 +32,8 @@ class TestLinear:
         else:
             assert linear.b is None
 
+        assert linear.name == "Linear"
+
     def test_forward(
         self,
         in_features: int,
@@ -91,12 +93,12 @@ class TestLinear:
         linear = Linear(in_features, out_features, bias)
         parameters = linear.parameters()
 
-        assert isinstance(parameters, list)
+        assert isinstance(parameters, dict)
         assert len(parameters) == 1 + (1 if bias else 0)
-        assert all(isinstance(p, Tensor) for p in parameters)
-        assert parameters[0].data.shape == (in_features, out_features)
+        assert all(isinstance(p, Tensor) for p in parameters.values())
+        assert parameters["Linear/W"].data.shape == (in_features, out_features)
         if bias:
-            assert parameters[1].data.shape == (out_features,)
+            assert parameters["Linear/b"].data.shape == (out_features,)
 
 
 class TestDropout:
@@ -108,6 +110,7 @@ class TestDropout:
         assert isinstance(dropout, Module)
         assert dropout.prob == prob
         assert dropout._coeff == 1 / (1 - prob)
+        assert dropout.name == "Dropout"
 
     @pytest.mark.parametrize("prob", [0.0, 0.5, 0.9])
     def test_forward(self, prob: float) -> None:
