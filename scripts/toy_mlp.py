@@ -9,6 +9,7 @@ from torchlet.nn import (
     Linear,
     ReLU,
 )
+from torchlet.optim import SGD
 
 try:
     import matplotlib.pyplot as plt
@@ -160,8 +161,13 @@ def main(args: argparse.Namespace) -> None:
         print(model)
         print("number of parameters", sum(p.size() for p in model.parameters()))
 
+    optim = SGD(
+        model.parameters(),
+        lr=args.lr,
+        weight_decay=args.alpha,
+    )
+
     # Training loop
-    alpha = args.alpha
     batch_size = args.batch_size or len(X_train)
     batch_fn = get_batch_fn(X_train, y_train, batch_size)
     for step in (pbar := tqdm(range(args.n_steps), disable=args.silent)):
@@ -170,20 +176,12 @@ def main(args: argparse.Namespace) -> None:
 
         # Compute the forward pass
         y_pred = model(X_batch)[:, 0]
-        data_loss = (1 - y_batch * y_pred).relu().mean()
-
-        # L2 regularization
-        reg_loss = alpha * sum((p**2).sum() for p in model.parameters())
-        loss = data_loss + reg_loss
+        loss = (1 - y_batch * y_pred).relu().mean()
 
         # Compute the backward pass
         model.zero_grad()
         loss.backward()
-
-        # Update the parameters
-        lr = 1.0 - 0.9 * step / args.n_steps
-        for param in model.parameters():
-            param.data -= lr * param.grad
+        optim.step()
 
         # Update the progress bar
         if step % 100 == 0:
@@ -266,6 +264,13 @@ if __name__ == "__main__":
         default=1000,
         help="Number of training steps.",
     )
+    training_parser.add_argument(
+        "--lr",
+        type=float,
+        default=5e-2,
+        help="Learning rate.",
+    )
+
     training_parser.add_argument(
         "--batch_size",
         type=int,
