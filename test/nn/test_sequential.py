@@ -35,9 +35,9 @@ def test_state_dict() -> None:
 
     # Check the number of parameters
     assert len(state_dict) == 3
-    assert "Linear1.W" in state_dict
+    assert "Linear1.weight" in state_dict
     assert "Linear1.b" in state_dict
-    assert "Linear2.W" in state_dict
+    assert "Linear2.weight" in state_dict
     assert "Linear2.b" not in state_dict
 
     for key, value in state_dict.items():

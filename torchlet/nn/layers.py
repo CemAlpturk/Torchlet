@@ -9,7 +9,7 @@ class Linear(Module):
     Linear layer.
     """
 
-    W: Tensor
+    weight: Tensor
     b: Tensor | None
 
     def __init__(
@@ -26,7 +26,7 @@ class Linear(Module):
         if out_features <= 0:
             raise ValueError("out_features must be greater than 0")
 
-        self.W = Tensor(
+        self.weight = Tensor(
             data=np.random.uniform(-1, 1, (in_features, out_features)),
             requires_grad=True,
         )
@@ -39,7 +39,7 @@ class Linear(Module):
             self.b = None
 
     def forward(self, x: Tensor) -> Tensor:
-        z = x @ self.W
+        z = x @ self.weight
         if self.b is not None:
             z += self.b
 
@@ -47,13 +47,13 @@ class Linear(Module):
 
     def state_dict(self, prefix: str = "") -> dict[str, Tensor]:
         prefix = prefix + "." if prefix else ""
-        state = {f"{prefix}W": self.W}
+        state = {f"{prefix}weight": self.weight}
         if self.b is not None:
             state[f"{prefix}b"] = self.b
         return state
 
     def __repr__(self) -> str:
-        return f"Linear(in_features={self.W.shape[0]}, out_features={self.W.shape[1]}, bias={self.b is not None})"
+        return f"Linear(in_features={self.weight.shape[0]}, out_features={self.weight.shape[1]}, bias={self.b is not None})"
 
 
 class Dropout(Module):

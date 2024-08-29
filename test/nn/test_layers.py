@@ -26,8 +26,8 @@ class TestLinear:
 
         assert isinstance(linear, Module)
 
-        assert isinstance(linear.W, Tensor)
-        assert linear.W.data.shape == (in_features, out_features)
+        assert isinstance(linear.weight, Tensor)
+        assert linear.weight.data.shape == (in_features, out_features)
 
         if bias:
             assert isinstance(linear.b, Tensor)
@@ -52,7 +52,7 @@ class TestLinear:
         y1 = out1.sum()
         y1.backward()
 
-        assert linear.W.grad.shape == (in_features, out_features)
+        assert linear.weight.grad.shape == (in_features, out_features)
         if bias:
             assert isinstance(linear.b, Tensor)
             assert linear.b.grad.shape == (out_features,)
@@ -66,7 +66,7 @@ class TestLinear:
         y2 = out2.sum()
         y2.backward()
 
-        assert linear.W.grad.shape == (in_features, out_features)
+        assert linear.weight.grad.shape == (in_features, out_features)
         if bias:
             assert isinstance(linear.b, Tensor)
             assert linear.b.grad.shape == (out_features,)
@@ -80,7 +80,7 @@ class TestLinear:
         y3 = out3.sum()
         y3.backward()
 
-        assert linear.W.grad.shape == (in_features, out_features)
+        assert linear.weight.grad.shape == (in_features, out_features)
         if bias:
             assert isinstance(linear.b, Tensor)
             assert linear.b.grad.shape == (out_features,)
@@ -117,9 +117,9 @@ class TestLinear:
         assert isinstance(state_dict, dict)
         assert len(state_dict) == 1 + (1 if bias else 0)
 
-        assert "W" in state_dict
-        assert isinstance(state_dict["W"], Tensor)
-        assert state_dict["W"].data.shape == (in_features, out_features)
+        assert "weight" in state_dict
+        assert isinstance(state_dict["weight"], Tensor)
+        assert state_dict["weight"].data.shape == (in_features, out_features)
 
         if bias:
             assert "b" in state_dict
@@ -139,9 +139,9 @@ class TestLinear:
         assert isinstance(state_dict, dict)
         assert len(state_dict) == 1 + (1 if bias else 0)
 
-        assert f"{prefix}.W" in state_dict
-        assert isinstance(state_dict[f"{prefix}.W"], Tensor)
-        assert state_dict[f"{prefix}.W"].data.shape == (in_features, out_features)
+        assert f"{prefix}.weight" in state_dict
+        assert isinstance(state_dict[f"{prefix}.weight"], Tensor)
+        assert state_dict[f"{prefix}.weight"].data.shape == (in_features, out_features)
 
         if bias:
             assert f"{prefix}.b" in state_dict
