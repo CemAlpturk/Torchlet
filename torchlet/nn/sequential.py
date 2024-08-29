@@ -13,20 +13,22 @@ class Sequential(Module):
 
     def __init__(self, *args: Module) -> None:
         self.modules = args
-        self._adjust_module_names()
-        self.train()
 
     def forward(self, x: Tensor) -> Tensor:
         for module in self.modules:
             x = module(x)
         return x
 
-    def parameters(self) -> dict[str, Tensor]:
-        params = {}
+    def state_dict(self) -> dict[str, Tensor]:
+        state = {}
+        counts = defaultdict(int)
         for module in self.modules:
-            # params.extend(module.parameters())
-            params.update(module.parameters())
-        return params
+            name = module.__class__.__name__
+            counts[name] += 1
+            count = counts[name]
+            prefix = f"{name}{count}"
+            state.update(module.state_dict(prefix=prefix))
+        return state
 
     def train(self) -> None:
         for module in self.modules:
@@ -42,12 +44,8 @@ class Sequential(Module):
         return self.modules[index]
 
     def __repr__(self) -> str:
-        return f"Sequential({', '.join([str(module) for module in self.modules])})"
-
-    def _adjust_module_names(self) -> None:
-        names = defaultdict(int)
-        for module in self.modules:
-            names[module.__class__.__name__] += 1
-            module.name = (
-                f"{module.__class__.__name__}_{names[module.__class__.__name__]}"
-            )
+        s = "Sequential(\n"
+        for i, module in enumerate(self.modules):
+            s += f"    ({i}) : {module}\n"
+        s += ")"
+        return s
