@@ -2,7 +2,7 @@
 
 <div align="center">
   <figure>
-    <img alt="torchlet_logo" src="assets/torchlet.png">
+    <img width="223" alt="torchlet_logo" src="assets/torchlet.png">
   </figure>
 </div>
 
