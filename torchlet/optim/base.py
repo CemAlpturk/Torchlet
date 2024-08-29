@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Iterator
 from torchlet import Tensor
 
 
@@ -7,17 +8,17 @@ class Optimizer(ABC):
     Base class for all optimizers.
     """
 
-    params: dict[str, Tensor]
+    params: list[Tensor]
 
-    def __init__(self, params: dict[str, Tensor]) -> None:
-        self.params = params
+    def __init__(self, params: Iterator[Tensor]) -> None:
+        self.params = list(params)
 
     def zero_grad(self) -> None:
         """
         Sets the gradients of all parameters to zero.
         """
 
-        for param in self.params.values():
+        for param in self.params:
             param.zero_grad()
 
     @abstractmethod

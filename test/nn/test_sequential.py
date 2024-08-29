@@ -1,18 +1,18 @@
+from collections.abc import Iterator
+
 from torchlet.nn import Linear, Sequential
 from torchlet import Tensor
 
 
-def test_sequential_init() -> None:
+def test_init() -> None:
     # Create a Sequential model with two Linear modules
     model = Sequential(Linear(10, 5), Linear(5, 2))
 
     # Check the number of modules
     assert len(model.modules) == 2
-    assert model[0].name == "Linear_1"
-    assert model[1].name == "Linear_2"
 
 
-def test_sequential_forward() -> None:
+def test_forward() -> None:
     # Create a Sequential model with two Linear modules
     model = Sequential(Linear(10, 5), Linear(5, 2))
 
@@ -26,15 +26,33 @@ def test_sequential_forward() -> None:
     assert output_tensor.shape == (1, 2)
 
 
-def test_sequential_parameters() -> None:
+def test_state_dict() -> None:
     # Create a Sequential model with two Linear modules
-    model = Sequential(Linear(10, 5), Linear(5, 2))
+    model = Sequential(Linear(10, 5), Linear(5, 2, bias=False))
 
     # Get the parameters of the model
-    parameters = model.parameters()
+    state_dict = model.state_dict()
 
     # Check the number of parameters
-    assert len(parameters) == 4
+    assert len(state_dict) == 3
+    assert "Linear1.W" in state_dict
+    assert "Linear1.b" in state_dict
+    assert "Linear2.W" in state_dict
+    assert "Linear2.b" not in state_dict
+
+    for key, value in state_dict.items():
+        assert isinstance(value, Tensor)
+
+
+def test_parameters() -> None:
+    model = Sequential(Linear(10, 5), Linear(5, 2))
+    params = model.parameters()
+
+    assert isinstance(params, Iterator)
+    assert len(list(params)) == 4
+
+    for param in model.parameters():
+        assert isinstance(param, Tensor)
 
 
 def test_sequential_train_eval() -> None:

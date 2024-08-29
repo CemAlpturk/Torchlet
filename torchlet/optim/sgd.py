@@ -1,3 +1,5 @@
+from typing import Iterator
+
 from torchlet import Tensor
 from torchlet.optim.base import Optimizer
 
@@ -9,7 +11,7 @@ class SGD(Optimizer):
 
     def __init__(
         self,
-        params: dict[str, Tensor],
+        params: Iterator[Tensor],
         lr: float = 0.001,
         momentum: float = 0.0,
         weight_decay: float = 0.0,
@@ -20,9 +22,8 @@ class SGD(Optimizer):
     ) -> None:
         """
         Initializes a SGD optimizer.
-
         Args:
-            params (list[Tensor]): List of parameters to optimize.
+            params (Iterator[Tensor]): An iterator of parameters to optimize.
             lr (float, optional): Learning rate (default: 0.001).
             momentum (float, optional): Momentum factor (default: 0.0).
             weight_decay (float, optional): Weight decay (L2 penalty) (default: 0.0).
@@ -30,6 +31,7 @@ class SGD(Optimizer):
             nesterov (bool, optional): Enables Nesterov momentum (default: False).
             maximize (bool, optional): Whether to maximize the objective function (default: False).
         """
+
         super().__init__(params)
         self.lr = lr
         self.momentum = momentum
@@ -42,7 +44,7 @@ class SGD(Optimizer):
 
     def step(self) -> None:
 
-        for param, momentum_buff in zip(self.params.values(), self.momentum_buffer):
+        for param, momentum_buff in zip(self.params, self.momentum_buffer):
             grad = param.grad
 
             if self.weight_decay != 0:

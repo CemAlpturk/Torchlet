@@ -17,10 +17,9 @@ class Linear(Module):
         in_features: int,
         out_features: int,
         bias: bool = True,
-        name: str = "Linear",
     ) -> None:
         # TODO: Initialization methods
-        super().__init__(name=name)
+        super().__init__()
 
         if in_features <= 0:
             raise ValueError("in_features must be greater than 0")
@@ -46,15 +45,15 @@ class Linear(Module):
 
         return z
 
-    def parameters(self) -> dict[str, Tensor]:
-        # return [self.W] + ([self.b] if self.b is not None else [])
-        params = {f"{self.name}/W": self.W}
+    def state_dict(self, prefix: str = "") -> dict[str, Tensor]:
+        prefix = prefix + "." if prefix else ""
+        state = {f"{prefix}W": self.W}
         if self.b is not None:
-            params[f"{self.name}/b"] = self.b
-        return params
+            state[f"{prefix}b"] = self.b
+        return state
 
     def __repr__(self) -> str:
-        return f"{self.name}({self.W.data.shape[0]}, {self.W.data.shape[1]}, bias={self.b is not None})"
+        return f"Linear(in_features={self.W.shape[0]}, out_features={self.W.shape[1]}, bias={self.b is not None})"
 
 
 class Dropout(Module):
@@ -65,18 +64,13 @@ class Dropout(Module):
     prob: float
     _coeff: float
 
-    def __init__(
-        self,
-        prob: float,
-        name: str = "Dropout",
-    ) -> None:
-        super().__init__(name=name)
+    def __init__(self, prob: float) -> None:
+        super().__init__()
 
         if prob < 0 or prob >= 1:
             raise ValueError("Dropout probability must be in the range [0, 1)")
         self.prob = prob
         self._coeff = 1 / (1 - prob)
-        self.name = name or "Dropout"
 
     def forward(self, x: Tensor) -> Tensor:
 
@@ -89,4 +83,4 @@ class Dropout(Module):
         return x
 
     def __repr__(self) -> str:
-        return f"{self.name}(p={self.prob})"
+        return f"Dropout(prob={self.prob})"

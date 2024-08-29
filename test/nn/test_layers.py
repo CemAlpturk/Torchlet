@@ -1,5 +1,8 @@
+from collections.abc import Iterator
+
 import pytest
 import numpy as np
+
 from torchlet import Tensor
 from torchlet.nn import (
     Module,
@@ -31,8 +34,6 @@ class TestLinear:
             assert linear.b.data.shape == (out_features,)
         else:
             assert linear.b is None
-
-        assert linear.name == "Linear"
 
     def test_forward(
         self,
@@ -91,14 +92,61 @@ class TestLinear:
         bias: bool,
     ) -> None:
         linear = Linear(in_features, out_features, bias)
-        parameters = linear.parameters()
+        params = linear.parameters()
 
-        assert isinstance(parameters, dict)
-        assert len(parameters) == 1 + (1 if bias else 0)
-        assert all(isinstance(p, Tensor) for p in parameters.values())
-        assert parameters["Linear/W"].data.shape == (in_features, out_features)
+        assert isinstance(params, Iterator)
+        assert len(list(params)) == 1 + (1 if bias else 0)
+
+        for param in linear.parameters():
+            assert isinstance(param, Tensor)
+
+        params = list(linear.parameters())
+        assert params[0].data.shape == (in_features, out_features)
         if bias:
-            assert parameters["Linear/b"].data.shape == (out_features,)
+            assert params[1].data.shape == (out_features,)
+
+    def test_state_dict(
+        self,
+        in_features: int,
+        out_features: int,
+        bias: bool,
+    ) -> None:
+        linear = Linear(in_features, out_features, bias)
+        state_dict = linear.state_dict()
+
+        assert isinstance(state_dict, dict)
+        assert len(state_dict) == 1 + (1 if bias else 0)
+
+        assert "W" in state_dict
+        assert isinstance(state_dict["W"], Tensor)
+        assert state_dict["W"].data.shape == (in_features, out_features)
+
+        if bias:
+            assert "b" in state_dict
+            assert isinstance(state_dict["b"], Tensor)
+            assert state_dict["b"].data.shape == (out_features,)
+
+    def test_state_dict_prefix(
+        self,
+        in_features: int,
+        out_features: int,
+        bias: bool,
+    ) -> None:
+        linear = Linear(in_features, out_features, bias)
+        prefix = "Linear"
+        state_dict = linear.state_dict(prefix=prefix)
+
+        assert isinstance(state_dict, dict)
+        assert len(state_dict) == 1 + (1 if bias else 0)
+
+        assert f"{prefix}.W" in state_dict
+        assert isinstance(state_dict[f"{prefix}.W"], Tensor)
+        assert state_dict[f"{prefix}.W"].data.shape == (in_features, out_features)
+
+        if bias:
+            assert f"{prefix}.b" in state_dict
+            assert isinstance(state_dict[f"{prefix}.b"], Tensor)
+            assert state_dict[f"{prefix}.b"].data.shape == (out_features,)
 
 
 class TestDropout:
@@ -110,7 +158,6 @@ class TestDropout:
         assert isinstance(dropout, Module)
         assert dropout.prob == prob
         assert dropout._coeff == 1 / (1 - prob)
-        assert dropout.name == "Dropout"
 
     @pytest.mark.parametrize("prob", [0.0, 0.5, 0.9])
     def test_forward(self, prob: float) -> None:
@@ -152,3 +199,17 @@ class TestDropout:
         assert isinstance(y, Tensor)
         assert y.data.shape == (10, 10)
         assert np.allclose(y.data, x.data)
+
+    def test_state_dict(self) -> None:
+        dropout = Dropout(0.5)
+        state_dict = dropout.state_dict()
+
+        assert isinstance(state_dict, dict)
+        assert len(state_dict) == 0
+
+    def test_parameters(self) -> None:
+        dropout = Dropout(0.5)
+        params = dropout.parameters()
+
+        assert isinstance(params, Iterator)
+        assert len(list(params)) == 0

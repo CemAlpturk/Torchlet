@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Iterator
 import numpy as np
 from torchlet import Tensor
 
@@ -9,17 +10,22 @@ class Module(ABC):
     """
 
     training: bool
-    name: str
 
-    def __init__(self, name: str) -> None:
+    def __init__(self) -> None:
         self.training = True
-        self.name = name
 
-    def parameters(self) -> dict[str, Tensor]:
+    def state_dict(self, prefix: str = "") -> dict[str, Tensor]:
         """
-        Return a dict of all learnable parameters.
+        Returns the state of the module as a dictionary.
         """
         return {}
+
+    def parameters(self) -> Iterator[Tensor]:
+        """
+        Return an iterator over the parameters of the module.
+        """
+        for param in self.state_dict().values():
+            yield param
 
     def zero_grad(self) -> None:
         """
@@ -28,7 +34,7 @@ class Module(ABC):
         Returns:
             None
         """
-        for p in self.parameters().values():
+        for p in self.parameters():
             p.grad = np.zeros_like(p.data)
 
     @abstractmethod
