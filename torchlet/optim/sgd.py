@@ -9,7 +9,7 @@ class SGD(Optimizer):
 
     def __init__(
         self,
-        params: list[Tensor],
+        params: dict[str, Tensor],
         lr: float = 0.001,
         momentum: float = 0.0,
         weight_decay: float = 0.0,
@@ -42,7 +42,7 @@ class SGD(Optimizer):
 
     def step(self) -> None:
 
-        for param, momentum_buff in zip(self.params, self.momentum_buffer):
+        for param, momentum_buff in zip(self.params.values(), self.momentum_buffer):
             grad = param.grad
 
             if self.weight_decay != 0:

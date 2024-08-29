@@ -9,15 +9,17 @@ class Module(ABC):
     """
 
     training: bool
+    name: str
 
-    def __init__(self) -> None:
+    def __init__(self, name: str) -> None:
         self.training = True
+        self.name = name
 
-    def parameters(self) -> list[Tensor]:
+    def parameters(self) -> dict[str, Tensor]:
         """
-        Return a list of all learnable parameters.
+        Return a dict of all learnable parameters.
         """
-        return []
+        return {}
 
     def zero_grad(self) -> None:
         """
@@ -26,7 +28,7 @@ class Module(ABC):
         Returns:
             None
         """
-        for p in self.parameters():
+        for p in self.parameters().values():
             p.grad = np.zeros_like(p.data)
 
     @abstractmethod

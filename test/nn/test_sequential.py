@@ -2,6 +2,16 @@ from torchlet.nn import Linear, Sequential
 from torchlet import Tensor
 
 
+def test_sequential_init() -> None:
+    # Create a Sequential model with two Linear modules
+    model = Sequential(Linear(10, 5), Linear(5, 2))
+
+    # Check the number of modules
+    assert len(model.modules) == 2
+    assert model[0].name == "Linear_1"
+    assert model[1].name == "Linear_2"
+
+
 def test_sequential_forward() -> None:
     # Create a Sequential model with two Linear modules
     model = Sequential(Linear(10, 5), Linear(5, 2))
