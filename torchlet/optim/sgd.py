@@ -1,5 +1,7 @@
 from typing import Iterator
 
+import numpy as np
+
 from torchlet import Tensor
 from torchlet.optim.base import Optimizer
 
@@ -8,6 +10,14 @@ class SGD(Optimizer):
     """
     Stochastic Gradient Descent optimizer.
     """
+
+    lr: float
+    momentum: float
+    weight_decay: float
+    dampening: float
+    nesterov: bool
+    maximize: bool
+    momentum_buffer: list[None | np.ndarray]
 
     def __init__(
         self,
