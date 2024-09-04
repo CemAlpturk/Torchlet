@@ -279,33 +279,41 @@ def scalar_power(a: Tensor, b: float | int) -> Tensor:
     return out
 
 
-def sum(a: Tensor) -> Tensor:
+def sum(a: Tensor, axis: int | None = None) -> Tensor:
     """
-    Compute the sum of all elements in the input tensor.
+    Compute the sum of elements in the input tensor, optionally along a specified axis.
 
     Args:
         a (Tensor): The input tensor.
+        axis (int, optional): The axis along which to sum. If None, sum all elements.
 
     Returns:
-        Tensor: The tensor containing the sum of all elements.
+        Tensor: The tensor containing the sum of elements.
 
     Raises:
         AssertionError: If the input is not a tensor.
 
     Examples:
-        >>> a = Tensor([1, 2, 3])
+        >>> a = Tensor([[1, 2, 3], [4, 5, 6]])
         >>> sum(a)
-        Tensor(6)
+        Tensor(21)
+        >>> sum(a, axis=0)
+        Tensor([5, 7, 9])
+        >>> sum(a, axis=1)
+        Tensor([6, 15])
     """
-    # TODO: Implement sum over axis
     assert isinstance(a, Tensor), "Input must be a tensor"
 
     def _backward(grad: np.ndarray) -> None:
+        # Broadcast the gradient to the shape of the original tensor
+        if axis is not None:
+            grad = np.expand_dims(grad, axis)
         a.grad += np.ones_like(a.data) * grad
 
     requires_grad = a.requires_grad
+    summed_data = a.data.sum(axis=axis)
     out = Tensor(
-        data=a.data.sum(),
+        data=summed_data,
         dtype=a.dtype,
         name="sum",
         args=(a,) if requires_grad else None,
