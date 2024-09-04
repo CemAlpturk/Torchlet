@@ -84,3 +84,18 @@ class Dropout(Module):
 
     def __repr__(self) -> str:
         return f"Dropout(prob={self.prob})"
+
+
+class LayerNorm(Module):
+    """
+    Layer normalization layer.
+    """
+
+    def __init__(self, dim: int, eps: float = 1e-5) -> None:
+        super().__init__()
+        self.eps = eps
+        self.gamma = Tensor(data=np.ones((dim,)), requires_grad=True)
+        self.beta = Tensor(data=np.zeros((dim,)), requires_grad=True)
+
+    def forward(self, x: Tensor) -> Tensor:
+        pass

@@ -134,10 +134,10 @@ class Tensor:
         # TODO: Implement
         raise NotImplementedError
 
-    def sum(self) -> Tensor:
+    def sum(self, axis: int | None = None) -> Tensor:
         from torchlet.functions import sum
 
-        return sum(self)
+        return sum(self, axis=axis)
 
     def mean(self) -> Tensor:
         from torchlet.functions import mean
