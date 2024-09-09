@@ -1,335 +1,373 @@
 from __future__ import annotations
-from typing import Union, Callable, Sequence, Any
-import uuid
-import logging
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import DTypeLike, ArrayLike
 
-logger = logging.getLogger(__name__)
+from . import scalar_ops
+from .autodiff import Context, Variable, backpropagate
+from .tensor_data import TensorData
+from .tensor_functions import (
+    EQ,
+    LT,
+    Add,
+    All,
+    Copy,
+    Exp,
+    Inv,
+    IsClose,
+    Log,
+    MatMul,
+    Mul,
+    Neg,
+    Permute,
+    ReLU,
+    Sigmoid,
+    Sum,
+    View,
+    tensor,
+)
 
-DEFAULT_TYPE = np.float32
+if TYPE_CHECKING:
+    from typing import Any, Iterable, Sequence, TypeAlias, Union
+
+    import numpy.typing as npt
+
+    from .tensor_data import Shape, Storage, Strides, UserIndex, UserShape, UserStrides
+    from .tensor_functions import Function
+    from .tensor_ops import TensorBackend
+
+    TensorLike: TypeAlias = Union[float, int, "Tensor"]
+
+
+@dataclass
+class History:
+    """
+    `History` stores the history of `Function` operations that was
+    used to construct the current Variable.
+    """
+
+    last_fn: type[Function] | None = None
+    ctx: Context | None = None
+    inputs: Sequence[Tensor] = ()
+
+
+_tensor_count = 0
 
 
 class Tensor:
     """
-    A class representing a tensor object.
-
-    Args:
-        data (ArrayLike): The data of the tensor.
-        dtype (DTypeLike | None, optional): The data type of the tensor. Defaults to None.
-        name (str | None, optional): The name of the tensor. Defaults to None.
-        args (tuple[Tensor, ...] | None, optional): The arguments of the tensor. Defaults to None.
-        backward_fn (Callable[[np.ndarray], None] | None, optional): The backward function of the tensor. Defaults to None.
-
+    Tensor class that represents a multidimensional array.
     """
 
-    data: np.ndarray
-    name: str | None
-    _id: int
-    args: tuple[Tensor, ...]
-    grad: np.ndarray
-    backward_fn: Callable[[np.ndarray], None] | None
-    requires_grad: bool
+    f: TensorBackend
+    history: History | None
+    grad: Tensor | None
+    _tensor: TensorData
+    unique_id: int
+    name: str
 
     def __init__(
         self,
-        data: ArrayLike,
-        dtype: DTypeLike | None = None,
+        v: TensorData,
+        back: History | None = None,
         name: str | None = None,
-        args: tuple[Tensor, ...] | None = None,
-        backward_fn: Callable[[np.ndarray], None] | None = None,
-        requires_grad: bool = False,
+        backend: TensorBackend | None = None,
     ) -> None:
-        """
-        Initializes a Tensor object.
-        Args:
-            data (ArrayLike): The input data for the tensor.
-            dtype (DTypeLike | None, optional): The data type of the tensor. Defaults to None.
-            name (str | None, optional): The name of the tensor. Defaults to None.
-            args (tuple[Tensor, ...] | None, optional): The arguments passed to the tensor. Defaults to None.
-            backward_fn (Callable[[np.ndarray], None] | None, optional): The backward function for gradient computation. Defaults to None.
-            requires_grad (bool, optional): Whether the tensor requires gradient computation. Defaults to False.
-        """
+        global _tensor_count
+        _tensor_count += 1
+        self.unique_id = _tensor_count
 
-        # Needed?
-        if isinstance(data, Tensor):
-            self = data
-            return
+        assert isinstance(v, TensorData), f"Expected TensorData, got {type(v)}"
+        assert backend is not None, "Backend must be provided"  # ????
 
-        self.data = np.array(data)
-
-        if dtype is None:
-            dtype = DEFAULT_TYPE
-
-        self.data = self.data.astype(dtype)
-
-        self.name = name
-        self._id = uuid.uuid1().int
-        self.args = args or tuple()
-
-        # TODO: Init as None to save memory?
-        self.grad = np.zeros_like(self.data)
-        self.requires_grad = requires_grad
-        self.backward_fn = backward_fn if requires_grad else None
-
-    def backward(self) -> None:
-        """
-        Compute the gradient of the tensor.
-        """
-        if not self.requires_grad:
-            raise ValueError("Tensor does not require gradient computation")
-
-        topo: list[Tensor] = []
-        visited = set()
-
-        def build_topo(v: Tensor) -> None:
-            if v not in visited:
-                visited.add(v)
-                for child in v.args:
-                    if child.requires_grad:
-                        build_topo(child)
-                topo.append(v)
-
-        build_topo(self)
-
-        self.grad = np.ones_like(self.data)
-        for v in reversed(topo):
-            if v.backward_fn is not None and v.requires_grad:
-                v.backward_fn(v.grad)
-
-    def zero_grad(self) -> None:
-        """
-        Zero the gradient of the tensor.
-        """
-        if self.requires_grad:
-            self.grad = np.zeros_like(self.data)
-
-    @property
-    def shape(self) -> Sequence[int]:
-        return self.data.shape
-
-    @property
-    def ndim(self) -> int:
-        return self.data.ndim
-
-    @property
-    def dtype(self) -> np.dtype:
-        return self.data.dtype
-
-    @property
-    def T(self) -> Tensor:
-        return self.transpose()
-
-    def item(self) -> Union[int, float]:
-        if self.data.size == 1:
-            return self.data.item()
+        self._tensor = v
+        self.history = back
+        self.f = backend
+        self.grad = None
+        if name is not None:
+            self.name = name
         else:
-            raise ValueError("Only scalar tensors can be converted to Python scalars")
+            self.name = str(self.unique_id)
 
-    def to_numpy(self) -> np.ndarray:
-        return self.data
+    def requires_grad_(self, x: bool) -> None:
+        # What happens with x?
+        self.history = History()
 
-    def reshape(self, shape: Sequence[int]) -> Tensor:
-        # TODO: Implement
-        raise NotImplementedError
+    def requires_grad(self) -> bool:
+        return self.history is not None
 
-    def sum(self, axis: int | None = None) -> Tensor:
-        from torchlet.functions import sum
-
-        return sum(self, axis=axis)
-
-    def mean(self) -> Tensor:
-        from torchlet.functions import mean
-
-        return mean(self)
-
-    def transpose(self) -> Tensor:
-        from torchlet.functions import transpose
-
-        return transpose(self)
-
-    def relu(self) -> Tensor:
-        from torchlet.functions import relu
-
-        return relu(self)
-
-    def sigmoid(self) -> Tensor:
-        from torchlet.functions import sigmoid
-
-        return sigmoid(self)
-
-    def tanh(self) -> Tensor:
-        from torchlet.functions import tanh
-
-        return tanh(self)
-
-    def size(self) -> int:
-        return self.data.size
-
-    def __hash__(self) -> int:
+    def to_numpy(self) -> npt.NDArray[np.float64]:
         """
-        Return the hash value of the object.
-
         Returns:
-            int: The hash value of the object.
+            numpy.ndarray: The tensor as a numpy array.
         """
-        return self._id
+        return self.contiguous()._tensor._storage.reshape(self.shape)
 
-    def __add__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        if isinstance(other, Tensor):
-            from torchlet.functions import tensor_add
+    # Properties
+    @property
+    def shape(self) -> UserShape:
+        """
+        Returns:
+            UserShape: The shape of the tensor.
+        """
+        return self._tensor.shape
 
-            return tensor_add(self, other)
+    @property
+    def size(self) -> int:
+        """
+        Returns:
+            int: The size of the tensor.
+        """
+        return self._tensor.size
+
+    @property
+    def dims(self) -> int:
+        """
+        Returns:
+            int: The number of dimensions of the tensor.
+        """
+        return self._tensor.dims
+
+    def _ensure_tensor(self, b: TensorLike) -> Tensor:
+        """
+        Turns a python number into a tensor with the same backend.
+        """
+        if isinstance(b, (int, float)):
+            c = Tensor.make([b], (1,), backend=self.f)
         else:
-            from torchlet.functions import constant_add
+            b._type_(self.f)
+            c = b
+        return c
 
-            return constant_add(self, other)
+    # Functions
+    def __add__(self, b: TensorLike) -> Tensor:
+        return Add.apply(self, self._ensure_tensor(b))
 
-    def __radd__(self, other: np.ndarray | float | int) -> Tensor:
-        return self + other
+    def __sub__(self, b: TensorLike) -> Tensor:
+        return Add.apply(self, -self._ensure_tensor(b))
 
-    def __iadd__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        self = self + other
-        return self
+    def __mul__(self, b: TensorLike) -> Tensor:
+        return Mul.apply(self, self._ensure_tensor(b))
 
-    def __sub__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        if isinstance(other, Tensor):
-            from torchlet.functions import tensor_subtract
+    def __truediv__(self, b: TensorLike) -> Tensor:
+        return Mul.apply(self, Inv.apply(self._ensure_tensor(b)))
 
-            return tensor_subtract(self, other)
-        else:
-            from torchlet.functions import constant_subtract
+    def __rtrudiv__(self, b: TensorLike) -> Tensor:
+        return Mul.apply(Inv.apply(self), self._ensure_tensor(b))
 
-            return constant_subtract(self, other)
+    def __matmul__(self, b: Tensor) -> Tensor:
+        return MatMul.apply(self, b)
 
-    def __rsub__(self, other: np.ndarray | float | int) -> Tensor:
-        return other + (-self)
+    def __lt__(self, b: TensorLike) -> Tensor:
+        return LT.apply(self, self._ensure_tensor(b))
 
-    def __isub__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        self = self - other
-        return self
+    def __eq__(self, b: TensorLike) -> Tensor:
+        return EQ.apply(self, self._ensure_tensor(b))
 
-    def __mul__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        if isinstance(other, Tensor):
-            from torchlet.functions import tensor_multiply
-
-            return tensor_multiply(self, other)
-        else:
-            from torchlet.functions import constant_multiply
-
-            return constant_multiply(self, other)
-
-    def __rmul__(self, other: np.ndarray | float | int) -> Tensor:
-        return self * other
-
-    def __imul__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        self = self * other
-        return self
+    def __gt__(self, b: TensorLike) -> Tensor:
+        return LT.apply(self._ensure_tensor(b), self)
 
     def __neg__(self) -> Tensor:
-        return self * (-1.0)
+        return Neg.apply(self)
 
-    def __matmul__(self, other: Tensor) -> Tensor:
+    def __radd__(self, b: TensorLike) -> Tensor:
+        return self + b
 
-        assert isinstance(other, Tensor), "Only supporting matmul with another tensor"
+    def __rmul__(self, b: TensorLike) -> Tensor:
+        return self * b
 
-        from torchlet.functions import tensor_matmul
+    def __rsub__(self, b: TensorLike) -> Tensor:
+        return -(self - b)
 
-        return tensor_matmul(self, other)
+    def __rtruediv__(self, b: TensorLike) -> Tensor:
+        return Inv.apply(self) * b
 
-    def __pow__(self, other: float | int) -> Tensor:
-        from torchlet.functions import scalar_power
-
-        return scalar_power(self, other)
-
-    def __rpow__(self, other: float | int) -> Tensor:
-        raise NotImplementedError("Exponentiation is not commutative.")
-
-    def __ipow__(self, other: float | int) -> Tensor:
-        self = self**other
-        return self
-
-    def __truediv__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        if isinstance(other, Tensor):
-            return self * (other**-1)
-
+    def all(self, dim: int | None = None) -> Tensor:
+        if dim is None:
+            return All.apply(self.view(self.size), self._ensure_tensor(0))
         else:
-            return self * (1 / other)
+            return All.apply(self, self._ensure_tensor(dim))
 
-    def __rtruediv__(self, other: np.ndarray | float | int) -> Tensor:
-        return other * self**-1
+    def is_close(self, y: Tensor) -> Tensor:
+        return IsClose.apply(self, y)
 
-    def __itruediv__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        self = self / other
-        return self
+    def sigmoid(self) -> Tensor:
+        return Sigmoid.apply(self)
 
-    def __lt__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        """
-        Less than comparison.
-        """
-        if isinstance(other, Tensor):
-            return Tensor(self.data < other.data)
+    def relu(self) -> Tensor:
+        return ReLU.apply(self)
 
-        return Tensor(self.data < other)
+    def log(self) -> Tensor:
+        return Log.apply(self)
 
-    def __le__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        """
-        Less than or equal to comparison.
-        """
-        if isinstance(other, Tensor):
-            return Tensor(self.data <= other.data)
+    def exp(self) -> Tensor:
+        return Exp.apply(self)
 
-        return Tensor(self.data <= other)
+    def item(self) -> float:
+        assert self.size == 1
+        x: float = self._tensor._storage[0]
+        return x
 
-    def __eq__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        """
-        Equal to comparison.
-        """
-        if isinstance(other, Tensor):
-            if other._id == self._id:
-                return Tensor(True)
-            return Tensor(self.data == other.data)
+    def sum(self, dim: int | None) -> Tensor:
+        if dim is None:
+            return Sum.apply(self.contiguous().view(self.size), self._ensure_tensor(0))
+        else:
+            return Sum.apply(self, self._ensure_tensor(dim))
 
-        return Tensor(self.data == other)
+    def mean(self, dim: int | None) -> Tensor:
+        if dim is not None:
+            return self.sum(dim) / self.shape[dim]
+        else:
+            return self.sum(dim) / self.size
 
-    def __ne__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        """
-        Not equal to comparison.
-        """
-        if isinstance(other, Tensor):
-            return Tensor(self.data != other.data)
+    def permute(self, *order: int) -> Tensor:
+        return Permute.apply(self, tensor(list(order)))
 
-        return Tensor(self.data != other)
+    def view(self, *shape: int) -> Tensor:
+        """Change the shape of the tensor to a new shape with the same size."""
+        return View.apply(self, tensor(list(shape)))
 
-    def __gt__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        """
-        Greater than comparison.
-        """
-        if isinstance(other, Tensor):
-            return Tensor(self.data > other.data)
-
-        return Tensor(self.data > other)
-
-    def __ge__(self, other: Tensor | np.ndarray | float | int) -> Tensor:
-        """
-        Greater than or equal to comparison.
-        """
-        if isinstance(other, Tensor):
-            return Tensor(self.data >= other.data)
-
-        return Tensor(self.data >= other)
+    def contiguous(self) -> Tensor:
+        """Return a contiguous tensor with the same data."""
+        return Copy.apply(self)
 
     def __repr__(self) -> str:
-        name = f", name={self.name}" if self.name is not None else ""
-        return f"Tensor({self.data.__str__()}{name})"
+        return self._tensor.to_string()
 
-    def __getitem__(self, idx: Any) -> Tensor:
-        from torchlet.functions import tensor_getitem
+    def __getitem__(self, key: int | UserIndex) -> float:
+        key2 = (key,) if isinstance(key, int) else key
+        return self._tensor.get(key2)
 
-        return tensor_getitem(self, idx)
+    def __setitem__(self, key: int | UserIndex, val: float) -> None:
+        key2 = (key,) if isinstance(key, int) else key
+        self._tensor.set(key2, val)
 
-    def __setitem__(self, idx: Any, value: Union[int, float, Tensor]) -> None:
-        from torchlet.functions import tensor_setitem
+    # Internal methods for autodiff
+    def _type_(self, backend: TensorBackend) -> None:
+        self.f = backend
 
-        tensor_setitem(self, idx, value)
+    def _new(self, tensor_data: TensorData) -> Tensor:
+        return Tensor(tensor_data, backend=self.f)
+
+    @staticmethod
+    def make(
+        storage: Storage | list[float],
+        shape: UserShape,
+        strides: UserStrides | None = None,
+        backend: TensorBackend | None = None,
+    ) -> Tensor:
+        """
+        Create a new tensor from data.
+        """
+        return Tensor(TensorData(storage, shape, strides), backend=backend)
+
+    def expand(self, other: Tensor) -> Tensor:
+        """
+        Method used to allow for backprop over broadcasting.
+        This methid is called when the output of `backward`
+        is a different size than the input of `forward`.
+
+        Args:
+            other (Tensor): backward tensor (must broadcast with self).
+
+        Returns:
+            Tensor: Expanded version of `other` with the right derivatives.
+        """
+
+        # Case 1: Both the same shape
+        if self.shape == other.shape:
+            return other
+
+        # Case 2: Backward is smaller than self. Broadcast up.
+        true_shape = TensorData.shape_broadcast(self.shape, other.shape)
+        buf = self.zeros(true_shape)
+        self.f.id_map(other, buf)
+        if self.shape == true_shape:
+            return buf
+
+        # Case 3: Still different, reduce extra dims.
+        out = buf
+        orig_shape = [1] * (len(out.shape) - len(self.shape)) + list(self.shape)
+        for dim, shape in enumerate(out.shape):
+            if orig_shape[dim] == 1 and shape != 1:
+                out = self.f.add_reduce(out, dim)
+
+        assert out.size == self.size, f"{out.shape} {self.shape}"
+
+        return Tensor.make(out._tensor._storage, self.shape, backend=self.f)
+
+    def zeros(self, shape: UserShape | None = None) -> Tensor:
+        def zero(shape: UserShape) -> Tensor:
+            return Tensor.make(
+                [0.0] * int(scalar_ops.prod(shape)), shape, backend=self.f
+            )
+
+        if shape is None:
+            out = zero(self.shape)
+        else:
+            out = zero(shape)
+        out._type_(self.f)
+        return out
+
+    def tuple(self) -> tuple[Storage, Shape, Strides]:
+        return self._tensor.tuple()
+
+    def detach(self) -> Tensor:
+        return Tensor(self._tensor, backend=self.f)
+
+    # Variable elements
+
+    def accumulate_derivative(self, x: Any) -> None:
+        """
+        Add `val` to the derivetive accumulated on this variable.
+        Should only be called during autodifferentiation on leaf variables.
+
+        Args:
+            x (Any): The value to add to the derivative.
+        """
+        assert self.is_leaf(), "Only leaf variables can have derivatives."
+        if self.grad is None:
+            self.grad = Tensor.make(
+                [0.0] * int(scalar_ops.prod(self.shape)),
+                self.shape,
+                backend=self.f,
+            )
+        self.grad += x
+
+    def is_leaf(self) -> bool:
+        """True if this variable is created by the user (no `last_fn`)."""
+        return self.history is not None and self.history.last_fn is None
+
+    def is_constant(self) -> bool:
+        """True if this variable is a constant."""
+        return self.history is None
+
+    @property
+    def parents(self) -> Iterable[Variable]:
+        assert self.history is not None
+        return self.history.inputs
+
+    def chain_rule(self, d_output: Any) -> Iterable[tuple[Variable, Any]]:
+        h = self.history
+        assert h is not None
+        assert h.last_fn is not None
+        assert h.ctx is not None
+
+        x = h.last_fn._backward(h.ctx, d_output)
+        assert len(x) == len(h.inputs), f"bug in function {h.last_fn}"
+        return [
+            (inp, inp.expand(self._ensure_tensor(d_in)))
+            for inp, d_in in zip(h.inputs, x)
+        ]
+
+    def backward(self, grad_output: Tensor | None = None) -> None:
+        if grad_output is None:
+            assert self.shape == (1,), "Must provide grad_output if non-scalar"
+            grad_output = Tensor.make([1.0], (1,), backend=self.f)
+        backpropagate(self, grad_output)
+
+    def zero_grad(self) -> None:
+        """Reset the derivative on this variable."""
+        self.grad = None
