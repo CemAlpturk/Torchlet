@@ -1,6 +1,6 @@
 from __future__ import annotations
-
 from typing import Iterable, Sequence, TypeAlias
+
 
 import numpy as np
 import numpy.typing as npt
@@ -194,7 +194,7 @@ class TensorData:
         return True
 
     @staticmethod
-    def shape_broadcase(shape_a: UserShape, shape_b: UserShape) -> UserShape:
+    def shape_broadcast(shape_a: UserShape, shape_b: UserShape) -> UserShape:
         """
         Broadcast two shapes to create a new union shape.
 
