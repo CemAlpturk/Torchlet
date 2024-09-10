@@ -16,7 +16,7 @@ from torchlet.tensor_data import (
 if TYPE_CHECKING:
     from torchlet.tensor_data import Index, Shape, Strides, Storage
 
-    from torchlet.tensor import Tensor
+    from torchlet._tensor import Tensor
 
 
 # Is this needed?

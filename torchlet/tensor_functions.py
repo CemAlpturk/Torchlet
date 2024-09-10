@@ -14,7 +14,7 @@ from torchlet.scalar_ops import prod
 
 if TYPE_CHECKING:
     from typing import Any
-    from .tensor import Tensor, Shape, Strides
+    from ._tensor import Tensor, Shape, Strides
     from .tensor_data import UserShape, UserIndex
 
 

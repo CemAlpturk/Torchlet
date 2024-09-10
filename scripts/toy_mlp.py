@@ -3,7 +3,7 @@ import os
 import argparse
 import numpy as np
 
-from torchlet.tensor import Tensor
+from torchlet._tensor import Tensor
 from torchlet.nn import (
     Sequential,
     Linear,

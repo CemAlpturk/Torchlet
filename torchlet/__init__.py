@@ -1,4 +1,4 @@
-from .tensor import (
+from ._tensor import (
     Tensor,
     History,
 )
