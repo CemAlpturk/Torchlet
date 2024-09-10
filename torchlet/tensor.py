@@ -5,38 +5,27 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from . import scalar_ops
-from .autodiff import Context, Variable, backpropagate
-from .tensor_data import TensorData
-from .tensor_functions import (
-    EQ,
-    LT,
-    Add,
-    All,
-    Copy,
-    Exp,
-    Inv,
-    IsClose,
-    Log,
-    MatMul,
-    Mul,
-    Neg,
-    Permute,
-    ReLU,
-    Sigmoid,
-    Sum,
-    View,
-    tensor,
-)
+import torchlet
+from torchlet import scalar_ops
+from torchlet.autodiff import Context, Variable, backpropagate
+from torchlet.tensor_data import TensorData
+from torchlet import tensor_functions as F
 
 if TYPE_CHECKING:
     from typing import Any, Iterable, Sequence, TypeAlias, Union
 
     import numpy.typing as npt
 
-    from .tensor_data import Shape, Storage, Strides, UserIndex, UserShape, UserStrides
-    from .tensor_functions import Function
-    from .tensor_ops import TensorBackend
+    from torchlet.tensor_data import (
+        Shape,
+        Storage,
+        Strides,
+        UserIndex,
+        UserShape,
+        UserStrides,
+    )
+    from torchlet.tensor_functions import Function
+    from torchlet.tensor_ops import TensorBackend
 
     TensorLike: TypeAlias = Union[float, int, "Tensor"]
 
@@ -74,16 +63,16 @@ class Tensor:
         back: History | None = None,
         name: str | None = None,
         backend: TensorBackend | None = None,
+        requires_grad: bool = False,
     ) -> None:
         global _tensor_count
         _tensor_count += 1
         self.unique_id = _tensor_count
 
         assert isinstance(v, TensorData), f"Expected TensorData, got {type(v)}"
-        assert backend is not None, "Backend must be provided"  # ????
+        assert backend is not None, "Backend must be provided"  # TODO: Remove this
 
         self._tensor = v
-        self.history = back
         self.f = backend
         self.grad = None
         if name is not None:
@@ -91,12 +80,10 @@ class Tensor:
         else:
             self.name = str(self.unique_id)
 
-    def requires_grad_(self, x: bool) -> None:
-        # What happens with x?
-        self.history = History()
-
-    def requires_grad(self) -> bool:
-        return self.history is not None
+        if requires_grad:
+            self.history = back if back is not None else History()
+        else:
+            self.history = None
 
     def to_numpy(self) -> npt.NDArray[np.float64]:
         """
@@ -130,6 +117,10 @@ class Tensor:
         """
         return self._tensor.dims
 
+    @property
+    def requires_grad(self) -> bool:
+        return self.history is not None
+
     def _ensure_tensor(self, b: TensorLike) -> Tensor:
         """
         Turns a python number into a tensor with the same backend.
@@ -141,36 +132,43 @@ class Tensor:
             c = b
         return c
 
+    def require_grad(self, requires_grad: bool = True) -> None:
+        if requires_grad:
+            if self.history is None:
+                self.history = History()
+        else:
+            self.history = None
+
     # Functions
     def __add__(self, b: TensorLike) -> Tensor:
-        return Add.apply(self, self._ensure_tensor(b))
+        return F.Add.apply(self, self._ensure_tensor(b))
 
     def __sub__(self, b: TensorLike) -> Tensor:
-        return Add.apply(self, -self._ensure_tensor(b))
+        return F.Add.apply(self, -self._ensure_tensor(b))
 
     def __mul__(self, b: TensorLike) -> Tensor:
-        return Mul.apply(self, self._ensure_tensor(b))
+        return F.Mul.apply(self, self._ensure_tensor(b))
 
     def __truediv__(self, b: TensorLike) -> Tensor:
-        return Mul.apply(self, Inv.apply(self._ensure_tensor(b)))
+        return F.Mul.apply(self, F.Inv.apply(self._ensure_tensor(b)))
 
     def __rtrudiv__(self, b: TensorLike) -> Tensor:
-        return Mul.apply(Inv.apply(self), self._ensure_tensor(b))
+        return F.Mul.apply(F.Inv.apply(self), self._ensure_tensor(b))
 
     def __matmul__(self, b: Tensor) -> Tensor:
-        return MatMul.apply(self, b)
+        return F.MatMul.apply(self, b)
 
     def __lt__(self, b: TensorLike) -> Tensor:
-        return LT.apply(self, self._ensure_tensor(b))
+        return F.LT.apply(self, self._ensure_tensor(b))
 
     def __eq__(self, b: TensorLike) -> Tensor:
-        return EQ.apply(self, self._ensure_tensor(b))
+        return F.EQ.apply(self, self._ensure_tensor(b))
 
     def __gt__(self, b: TensorLike) -> Tensor:
-        return LT.apply(self._ensure_tensor(b), self)
+        return F.LT.apply(self._ensure_tensor(b), self)
 
     def __neg__(self) -> Tensor:
-        return Neg.apply(self)
+        return F.Neg.apply(self)
 
     def __radd__(self, b: TensorLike) -> Tensor:
         return self + b
@@ -182,56 +180,58 @@ class Tensor:
         return -(self - b)
 
     def __rtruediv__(self, b: TensorLike) -> Tensor:
-        return Inv.apply(self) * b
+        return F.Inv.apply(self) * b
 
     def all(self, dim: int | None = None) -> Tensor:
         if dim is None:
-            return All.apply(self.view(self.size), self._ensure_tensor(0))
+            return F.All.apply(self.view(self.size), self._ensure_tensor(0))
         else:
-            return All.apply(self, self._ensure_tensor(dim))
+            return F.All.apply(self, self._ensure_tensor(dim))
 
     def is_close(self, y: Tensor) -> Tensor:
-        return IsClose.apply(self, y)
+        return F.IsClose.apply(self, y)
 
     def sigmoid(self) -> Tensor:
-        return Sigmoid.apply(self)
+        return F.Sigmoid.apply(self)
 
     def relu(self) -> Tensor:
-        return ReLU.apply(self)
+        return F.ReLU.apply(self)
 
     def log(self) -> Tensor:
-        return Log.apply(self)
+        return F.Log.apply(self)
 
     def exp(self) -> Tensor:
-        return Exp.apply(self)
+        return F.Exp.apply(self)
 
     def item(self) -> float:
         assert self.size == 1
         x: float = self._tensor._storage[0]
         return x
 
-    def sum(self, dim: int | None) -> Tensor:
+    def sum(self, dim: int | None = None) -> Tensor:
         if dim is None:
-            return Sum.apply(self.contiguous().view(self.size), self._ensure_tensor(0))
+            return F.Sum.apply(
+                self.contiguous().view(self.size), self._ensure_tensor(0)
+            )
         else:
-            return Sum.apply(self, self._ensure_tensor(dim))
+            return F.Sum.apply(self, self._ensure_tensor(dim))
 
-    def mean(self, dim: int | None) -> Tensor:
+    def mean(self, dim: int | None = None) -> Tensor:
         if dim is not None:
             return self.sum(dim) / self.shape[dim]
         else:
             return self.sum(dim) / self.size
 
     def permute(self, *order: int) -> Tensor:
-        return Permute.apply(self, tensor(list(order)))
+        return F.Permute.apply(self, torchlet.tensor(list(order)))
 
     def view(self, *shape: int) -> Tensor:
         """Change the shape of the tensor to a new shape with the same size."""
-        return View.apply(self, tensor(list(shape)))
+        return F.View.apply(self, torchlet.tensor(list(shape)))
 
     def contiguous(self) -> Tensor:
         """Return a contiguous tensor with the same data."""
-        return Copy.apply(self)
+        return F.Copy.apply(self)
 
     def __repr__(self) -> str:
         return self._tensor.to_string()
@@ -257,11 +257,16 @@ class Tensor:
         shape: UserShape,
         strides: UserStrides | None = None,
         backend: TensorBackend | None = None,
+        requires_grad: bool = False,
     ) -> Tensor:
         """
         Create a new tensor from data.
         """
-        return Tensor(TensorData(storage, shape, strides), backend=backend)
+        return Tensor(
+            TensorData(storage, shape, strides),
+            backend=backend,
+            requires_grad=requires_grad,
+        )
 
     def expand(self, other: Tensor) -> Tensor:
         """
@@ -282,7 +287,7 @@ class Tensor:
 
         # Case 2: Backward is smaller than self. Broadcast up.
         true_shape = TensorData.shape_broadcast(self.shape, other.shape)
-        buf = self.zeros(true_shape)
+        buf = torchlet.zeros(true_shape, backend=self.f)
         self.f.id_map(other, buf)
         if self.shape == true_shape:
             return buf
@@ -297,19 +302,6 @@ class Tensor:
         assert out.size == self.size, f"{out.shape} {self.shape}"
 
         return Tensor.make(out._tensor._storage, self.shape, backend=self.f)
-
-    def zeros(self, shape: UserShape | None = None) -> Tensor:
-        def zero(shape: UserShape) -> Tensor:
-            return Tensor.make(
-                [0.0] * int(scalar_ops.prod(shape)), shape, backend=self.f
-            )
-
-        if shape is None:
-            out = zero(self.shape)
-        else:
-            out = zero(shape)
-        out._type_(self.f)
-        return out
 
     def tuple(self) -> tuple[Storage, Shape, Strides]:
         return self._tensor.tuple()

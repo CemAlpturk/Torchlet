@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING, Callable, Protocol, Any
 
 import numpy as np
 
-from . import scalar_ops
-from .tensor_data import (
+import torchlet
+from torchlet import scalar_ops
+from torchlet.tensor_data import (
     broadcast_index,
     index_to_position,
     shape_broadcast,
@@ -13,9 +14,9 @@ from .tensor_data import (
 )
 
 if TYPE_CHECKING:
-    from .tensor_data import Index, Shape, Strides, Storage
+    from torchlet.tensor_data import Index, Shape, Strides, Storage
 
-    from .tensor import Tensor
+    from torchlet.tensor import Tensor
 
 
 # Is this needed?
@@ -101,7 +102,11 @@ class SimpleOps(TensorOps):
 
         def ret(a: Tensor, out: Tensor | None = None) -> Tensor:
             if out is None:
-                out = a.zeros(a.shape)
+                out = torchlet.zeros(
+                    a.shape,
+                    backend=a.f,
+                    requires_grad=a.requires_grad,
+                )
 
             f(*out.tuple(), *a.tuple())
             return out
@@ -119,7 +124,11 @@ class SimpleOps(TensorOps):
             else:
                 c_shape = a.shape
 
-            out = a.zeros(c_shape)
+            out = torchlet.zeros(
+                c_shape,
+                backend=a.f,
+                requires_grad=a.requires_grad,
+            )
             f(*out.tuple(), *a.tuple(), *b.tuple())
             return out
 
@@ -135,7 +144,9 @@ class SimpleOps(TensorOps):
             out_shape[dim] = 1
 
             # Other values when not sum.
-            out = a.zeros(tuple(out_shape))
+            out = torchlet.zeros(
+                tuple(out_shape), backend=a.f, requires_grad=a.requires_grad
+            )
             out._tensor._storage[:] = start
 
             f(*out.tuple(), *a.tuple(), dim)
