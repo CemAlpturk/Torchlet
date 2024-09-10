@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Iterable, Sequence, TypeAlias
+import random
 
 
 import numpy as np
@@ -242,6 +243,9 @@ class TensorData:
         for i in range(self.size):
             to_index(i, lshape, out_index)
             yield tuple(out_index)
+
+    def sample(self) -> UserIndex:
+        return tuple((random.randint(0, s - 1) for s in self.shape))
 
     def get(self, key: UserIndex) -> float:
         """
