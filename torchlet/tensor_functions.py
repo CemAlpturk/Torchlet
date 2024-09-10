@@ -4,6 +4,8 @@ import random
 from typing import TYPE_CHECKING
 from abc import ABC, abstractmethod
 
+import numpy as np
+
 import torchlet
 from torchlet import scalar_ops
 from torchlet.autodiff import Context
@@ -13,7 +15,7 @@ from torchlet.scalar_ops import prod
 if TYPE_CHECKING:
     from typing import Any
     from .tensor import Tensor, Shape, Strides
-    from .tensor_data import UserShape
+    from .tensor_data import UserShape, UserIndex
 
 
 def wrap_tuple(x: Any) -> tuple:
@@ -72,8 +74,8 @@ class Function(ABC):
 
         back = None
         if need_grad:
-            back = torchlet.History(cls, ctx, raw_vals)
-        return torchlet.Tensor(c._tensor, back, backend=c.f)
+            back = torchlet.History(cls, ctx, vals)
+        return torchlet.Tensor(c._tensor, back, backend=c.f, requires_grad=need_grad)
 
 
 class Neg(Function):
@@ -205,7 +207,7 @@ class LT(Function):
     @staticmethod
     def backward(ctx: Context, grad_out: Tensor) -> tuple[Tensor, Tensor]:
         a, b = ctx.saved_values
-        return grad_out.zeros(a.shape), grad_out.zeros(b.shape)
+        return zeros(a.shape, backend=a.f), zeros(b.shape, backend=b.f)
 
 
 class EQ(Function):
@@ -217,7 +219,7 @@ class EQ(Function):
     @staticmethod
     def backward(ctx: Context, grad_out: Tensor) -> tuple[Tensor, Tensor]:
         a, b = ctx.saved_values
-        return grad_out.zeros(a.shape), grad_out.zeros(b.shape)
+        return zeros(a.shape, backend=a.f), zeros(b.shape, backend=b.f)
 
 
 class IsClose(Function):
@@ -254,7 +256,7 @@ class Permute(Function):
     @staticmethod
     def backward(ctx: Context, grad_out: Tensor) -> tuple[Tensor, float]:
         (order,) = ctx.saved_values
-        restore_order = grad_out.zeros((order.size,))
+        restore_order = zeros((order.size,), backend=grad_out.f)
 
         # Generate inverse permutation
         for i in range(order.size):
@@ -325,13 +327,18 @@ class MatMul(Function):
 
 
 # Helper functions
-def zeros(shape: UserShape, backend: TensorBackend = SimpleBackend) -> Tensor:
+def zeros(
+    shape: UserShape,
+    backend: TensorBackend = SimpleBackend,
+    requires_grad: bool = False,
+) -> Tensor:
     """
     Produce a zero tensor of size `shape`.
 
     Args:
         shape (UserShape): The shape of the tensor.
         backend (TensorBackend): The backend to use.
+        requires_grad (bool): Whether to compute gradients.
 
     Returns:
         Tensor: The zero tensor.
@@ -340,6 +347,31 @@ def zeros(shape: UserShape, backend: TensorBackend = SimpleBackend) -> Tensor:
         [0.0] * int(scalar_ops.prod(shape)),
         shape,
         backend=backend,
+        requires_grad=requires_grad,
+    )
+
+
+def ones(
+    shape: UserShape,
+    backend: TensorBackend = SimpleBackend,
+    requires_grad: bool = False,
+) -> Tensor:
+    """
+    Produce a ones tensor of size `shape`.
+
+    Args:
+        shape (UserShape): The shape of the tensor.
+        backend (TensorBackend): The backend to use.
+        requires_grad (bool): Whether to compute gradients.
+
+    Returns:
+        Tensor: The ones tensor.
+    """
+    return torchlet.Tensor.make(
+        [1.0] * int(scalar_ops.prod(shape)),
+        shape,
+        backend=backend,
+        requires_grad=requires_grad,
     )
 
 
@@ -360,8 +392,12 @@ def rand(
         Tensor: The random tensor.
     """
     vals = [random.random() for _ in range(int(scalar_ops.prod(shape)))]
-    tensor = torchlet.Tensor.make(vals, shape, backend=backend)
-    tensor.requires_grad_(requires_grad)  # FIXME: make sure this works
+    tensor = torchlet.Tensor.make(
+        vals,
+        shape,
+        backend=backend,
+        requires_grad=requires_grad,
+    )
     return tensor
 
 
@@ -384,8 +420,12 @@ def _tensor(
         Tensor: The tensor.
     """
 
-    tensor = torchlet.Tensor.make(ls, shape, backend=backend)
-    tensor.requires_grad_(requires_grad)  # FIXME: make sure this works
+    tensor = torchlet.Tensor.make(
+        ls,
+        shape,
+        backend=backend,
+        requires_grad=requires_grad,
+    )
 
     return tensor
 
@@ -402,7 +442,7 @@ def tensor(
         ls (Any): The data of the tensor.
         backend (TensorBackend): The backend to use.
         requires_grad (bool): Whether to compute gradients.
-    # TODO: Fix me
+
     Returns:
         :class: `Tensor` : The tensor.
     """
@@ -422,5 +462,58 @@ def tensor(
     curr = flatten(ls)
     shape2 = shape(ls)
     return _tensor(
-        curr, tuple(shape2), backend=SimpleBackend, requires_grad=requires_grad
+        curr,
+        tuple(shape2),
+        backend=backend,
+        requires_grad=requires_grad,
     )
+
+
+# Gradient check for tensors
+
+
+def grad_central_difference(
+    f: Any,
+    *vals: Tensor,
+    arg: int = 0,
+    epsilon: float = 1e-6,
+    ind: UserIndex,
+) -> float:
+    x = vals[arg]
+    up = zeros(x.shape, backend=x.f)
+    up[ind] = epsilon
+    vals1 = [x if j != arg else x + up for j, x in enumerate(vals)]
+    vals2 = [x if j != arg else x - up for j, x in enumerate(vals)]
+    delta: Tensor = f(*vals1).sum() - f(*vals2).sum()
+
+    return delta[0] / (2.0 * epsilon)
+
+
+def grad_check(f: Any, *vals: Tensor) -> None:
+    for x in vals:
+        x.require_grad(True)
+        x.zero_grad()
+    random.seed(10)
+    out = f(*vals)
+    out.sum().backward()
+    err_msg = """
+
+Gradient check error for function %s.
+
+Inpit %s
+
+Received derivative %f for argument %d and index %s,
+but was expecting derivative %f from central difference.
+
+"""
+    for i, x in enumerate(vals):
+        ind = x._tensor.sample()
+        check = grad_central_difference(f, *vals, arg=i, ind=ind)
+        assert x.grad is not None
+        np.testing.assert_allclose(
+            x.grad[ind],
+            check,
+            1e-2,
+            1e-2,
+            err_msg=err_msg % (f, vals, x.grad[ind], i, ind, check),
+        )
