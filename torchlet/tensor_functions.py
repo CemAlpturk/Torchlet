@@ -315,15 +315,45 @@ class MatMul(Function):
     def backward(ctx: Context, grad_out: Tensor) -> tuple[Tensor, Tensor]:
         a, b = ctx.saved_values
 
+        # Keep track of whether the inputs are vectors
+        a_is_vector = a.dims == 1
+        b_is_vector = b.dims == 1
+
+        # Promote vectors to 2D tensors
+        if a_is_vector:
+            a = a.unsqueeze(0)  # (1, n)
+        if b_is_vector:
+            b = b.unsqueeze(1)  # (n, 1)
+
+        # Promote grad_out if necessary
+        if grad_out.dims == 0:
+            # grad_out is a scalar
+            # unlikely to happen in practice
+            grad_out = grad_out.unsqueeze(0).unsqueeze(0)  # (1, 1)
+        elif grad_out.dims == 1:
+            if a_is_vector and not b_is_vector:
+                grad_out = grad_out.unsqueeze(0)  # (1, p)
+            elif not a_is_vector and b_is_vector:
+                grad_out = grad_out.unsqueeze(1)  # (m, 1)
+            elif a_is_vector and b_is_vector:
+                grad_out = grad_out.unsqueeze(0).unsqueeze(0)  # (1, 1)
+
         def transpose(a: Tensor) -> Tensor:
             order = list(range(a.dims))
             order[-2], order[-1] = order[-1], order[-2]
             return a._new(a._tensor.permute(*order))
 
-        return (
-            grad_out.f.matrix_multiply(grad_out, transpose(b)),
-            grad_out.f.matrix_multiply(transpose(a), grad_out),
-        )
+        # Compute gradients
+        grad_a = grad_out @ transpose(b)
+        grad_b = transpose(a) @ grad_out
+
+        # Remove extra dimensions
+        if a_is_vector:
+            grad_a = grad_a.squeeze(0)
+        if b_is_vector:
+            grad_b = grad_b.squeeze(1)
+
+        return grad_a, grad_b
 
 
 # Helper functions

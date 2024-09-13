@@ -309,6 +309,27 @@ class Tensor:
     def detach(self) -> Tensor:
         return Tensor(self._tensor, backend=self.f)
 
+    def unsqueeze(self, dim: int) -> Tensor:
+        """Adds a singleton dimension at the specified position."""
+        shape = list(self.shape)
+        shape.insert(dim, 1)
+        return self.view(*shape)
+
+    def squeeze(self, dim: int | None = None) -> Tensor:
+        """Removes singleton dimensions."""
+        if dim is not None:
+            if self.shape[dim] != 1:
+                raise ValueError(
+                    f"Cannot squeeze dimension {dim} with size {self.shape[dim]}"
+                )
+            shape = list(self.shape)
+            new_shape = shape[:dim] + shape[dim + 1 :]
+            return self.view(*new_shape)
+        else:
+            # Squeeze all singleton dimensions
+            new_shape = tuple(dim for dim in self.shape if dim != 1)
+            return self.view(*new_shape)
+
     # Variable elements
 
     def accumulate_derivative(self, x: Any) -> None:
