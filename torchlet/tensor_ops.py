@@ -11,12 +11,14 @@ from torchlet.tensor_data import (
     index_to_position,
     shape_broadcast,
     to_index,
+    TensorData,
 )
 
 if TYPE_CHECKING:
     from torchlet.tensor_data import Index, Shape, Strides, Storage
 
     from torchlet._tensor import Tensor
+    from torchlet.tensor_data import UserShape, UserIndex
 
 
 # Is this needed?
@@ -105,7 +107,7 @@ class SimpleOps(TensorOps):
                 out = torchlet.zeros(
                     a.shape,
                     backend=a.f,
-                    requires_grad=a.requires_grad,
+                    requires_grad=a.requires_grad,  # TODO: We dont need to track grad here
                 )
 
             f(*out.tuple(), *a.tuple())
@@ -156,8 +158,44 @@ class SimpleOps(TensorOps):
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
-        # TODO: Implement matrix multiplication
-        raise NotImplementedError
+        """
+        Matrix multiplication for 2-D tensors.
+        Broadcast vectors to 2-D tensors.
+        """
+
+        assert isinstance(a, torchlet.Tensor) and isinstance(b, torchlet.Tensor)
+
+        a_is_vector = False
+        b_is_vector = False
+
+        if a.dims == 1:
+            a_is_vector = True
+            a = a.unsqueeze(0)
+
+        if b.dims == 1:
+            b_is_vector = True
+            b = b.unsqueeze(1)
+
+        assert a.dims == 2
+        assert b.dims == 2
+
+        assert a.shape[1] == b.shape[0]
+
+        out_shape = (a.shape[-2], b.shape[-1])
+        out = torchlet.zeros(out_shape, backend=a.f, requires_grad=a.requires_grad)
+
+        tensor_matrix_multiply(*out.tuple(), *a.tuple(), *b.tuple())
+
+        if a_is_vector and b_is_vector:
+            out = out.squeeze()
+
+        elif a_is_vector:
+            out = out.squeeze(0)
+
+        elif b_is_vector:
+            out = out.squeeze(1)
+
+        return out
 
 
 # Implementations
@@ -251,6 +289,48 @@ def tensor_reduce(fn: Callable[[float, float], float]) -> Any:
                 out[out_ind] = fn(in_storage[a_ind], out[out_ind])
 
     return _reduce
+
+
+def tensor_matrix_multiply(
+    out: Storage,
+    out_shape: Shape,
+    out_strides: Strides,
+    a_storage: Storage,
+    a_shape: Shape,
+    a_strides: Strides,
+    b_storage: Storage,
+    b_shape: Shape,
+    b_strides: Strides,
+) -> None:
+    """
+    Low level implementation of the matrix multiplication.
+    Batched 2-D tensors only for now.
+    """
+
+    # Containers for indices
+    out_index: Index = np.zeros(len(out_shape), dtype=np.int32)
+    a_index: Index = np.zeros(len(a_shape), dtype=np.int32)
+    b_index: Index = np.zeros(len(b_shape), dtype=np.int32)
+
+    common_dim = a_shape[-1]
+
+    for i in range(out_shape[0]):
+        out_index[0] = i
+        a_index[0] = i
+        for j in range(out_shape[1]):
+            out_index[1] = j
+            b_index[1] = j
+            val = 0.0
+            for k in range(common_dim):
+                a_index[1] = k
+                b_index[0] = k
+
+                a_val = a_storage[index_to_position(a_index, a_strides)]
+                b_val = b_storage[index_to_position(b_index, b_strides)]
+
+                val += a_val * b_val
+
+            out[index_to_position(out_index, out_strides)] = val
 
 
 SimpleBackend = TensorBackend(SimpleOps)
