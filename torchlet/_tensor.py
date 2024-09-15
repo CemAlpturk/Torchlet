@@ -139,6 +139,12 @@ class Tensor:
         else:
             self.history = None
 
+    def reset_history(self) -> None:
+        if self.requires_grad:
+            self.history = History()
+        else:
+            self.history = None
+
     # Functions
     def __add__(self, b: TensorLike) -> Tensor:
         return F.Add.apply(self, self._ensure_tensor(b))
@@ -236,6 +242,7 @@ class Tensor:
     def __repr__(self) -> str:
         return self._tensor.to_string()
 
+    # TODO: Implement slicing
     def __getitem__(self, key: int | UserIndex) -> float:
         key2 = (key,) if isinstance(key, int) else key
         return self._tensor.get(key2)
@@ -330,6 +337,12 @@ class Tensor:
             new_shape = tuple(dim for dim in self.shape if dim != 1)
             return self.view(*new_shape)
 
+    def numpy(self) -> np.ndarray:
+
+        data = self._tensor._storage
+        shape = self._tensor._shape
+        return np.array(data).reshape(shape)
+
     # Variable elements
 
     def accumulate_derivative(self, x: Any) -> None:
@@ -379,6 +392,7 @@ class Tensor:
         if grad_output is None:
             assert self.shape == (1,), "Must provide grad_output if non-scalar"
             grad_output = Tensor.make([1.0], (1,), backend=self.f)
+            self.grad = grad_output
         backpropagate(self, grad_output)
 
     def zero_grad(self) -> None:
