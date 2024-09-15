@@ -3,7 +3,8 @@ import os
 import argparse
 import numpy as np
 
-from torchlet._tensor import Tensor
+import torchlet
+from torchlet import Tensor
 from torchlet.nn import (
     Sequential,
     Linear,
@@ -26,10 +27,7 @@ except ImportError as e:
         )
 
 
-SAVE_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "toy_mlp_dataset.png",
-)
+SAVE_PATH = os.path.dirname(__file__)
 
 
 # Generate toy dataset
@@ -119,7 +117,10 @@ def get_batch_fn(
         X, y = X[idx], y[idx]
 
         for i in range(0, n_samples, batch_size):
-            yield Tensor(X[i : i + batch_size]), Tensor(y[i : i + batch_size])
+            yield (
+                torchlet.tensor(X[i : i + batch_size].tolist()),
+                torchlet.tensor(y[i : i + batch_size].tolist()),
+            )
 
 
 def main(args: argparse.Namespace) -> None:
@@ -156,10 +157,11 @@ def main(args: argparse.Namespace) -> None:
     layers.append(Linear(hidden_size, n_out))
 
     model = Sequential(*layers)
+    model.train()
 
     if not args.silent:
         print(model)
-        print("number of parameters", sum(p.size() for p in model.parameters()))
+        print("number of parameters", sum(p.value.size for p in model.parameters()))
 
     optim = SGD(
         model.parameters(),
@@ -168,6 +170,7 @@ def main(args: argparse.Namespace) -> None:
     )
 
     # Training loop
+    losses = []
     batch_size = args.batch_size or len(X_train)
     batch_fn = get_batch_fn(X_train, y_train, batch_size)
     for step in (pbar := tqdm(range(args.n_steps), disable=args.silent)):
@@ -175,21 +178,26 @@ def main(args: argparse.Namespace) -> None:
         X_batch, y_batch = next(batch_fn)
 
         # Compute the forward pass
-        y_pred = model(X_batch)[:, 0]
+        y_pred = model(X_batch).squeeze()
         loss = (1 - y_batch * y_pred).relu().mean()
 
         # Compute the backward pass
-        model.zero_grad()
+        optim.zero_grad()
         loss.backward()
         optim.step()
 
+        losses.append(loss.item())
+
         # Update the progress bar
-        if step % 100 == 0:
+        if step % 10 == 0:
             acc = ((y_pred > 0) == (y_batch > 0)).mean().item()
             pbar.set_description(f"Loss: {loss.item():.4f}, Acc: {acc:.2f}")
 
     # Test the model
-    y_pred = model(Tensor(X_test))[:, 0]
+    X_test = torchlet.tensor(X_test.tolist())
+    y_test = torchlet.tensor(y_test.tolist())
+    model.eval()
+    y_pred = model(X_test).squeeze()
     acc = ((y_pred > 0) == (y_test > 0)).mean().item()
     print(f"Test Accuracy: {acc:.2f}")
 
@@ -204,8 +212,8 @@ def main(args: argparse.Namespace) -> None:
         xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
         Xmesh = np.c_[xx.ravel(), yy.ravel()]
 
-        inputs = Tensor(Xmesh)
-        scores = model(inputs)[:, 0].to_numpy()
+        inputs = torchlet.tensor(Xmesh.tolist())
+        scores = model(inputs).squeeze().numpy()
         Z = scores > 0
         Z = Z.reshape(xx.shape)
 
@@ -217,7 +225,18 @@ def main(args: argparse.Namespace) -> None:
         plt.xlim(xx.min(), xx.max())
         plt.ylim(yy.min(), yy.max())
 
-        plt.savefig(SAVE_PATH)
+        path = os.path.join(SAVE_PATH, "toy_mlp_decision_boundary.png")
+        plt.savefig(path)
+
+        # Plot the loss curve
+        plt.figure()
+        plt.semilogy(losses)
+        plt.xlabel("Step")
+        plt.ylabel("Loss")
+        plt.title("Training Loss")
+
+        path = os.path.join(SAVE_PATH, "toy_mlp_training_loss.png")
+        plt.savefig(path)
 
 
 if __name__ == "__main__":
@@ -267,7 +286,7 @@ if __name__ == "__main__":
     training_parser.add_argument(
         "--lr",
         type=float,
-        default=5e-2,
+        default=1e-1,
         help="Learning rate.",
     )
 
