@@ -11,14 +11,12 @@ from torchlet.tensor_data import (
     index_to_position,
     shape_broadcast,
     to_index,
-    TensorData,
 )
 
 if TYPE_CHECKING:
     from torchlet.tensor_data import Index, Shape, Strides, Storage
 
     from torchlet._tensor import Tensor
-    from torchlet.tensor_data import UserShape, UserIndex
 
 
 # Is this needed?
@@ -104,11 +102,7 @@ class SimpleOps(TensorOps):
 
         def ret(a: Tensor, out: Tensor | None = None) -> Tensor:
             if out is None:
-                out = torchlet.zeros(
-                    a.shape,
-                    backend=a.f,
-                    requires_grad=a.requires_grad,  # TODO: We dont need to track grad here
-                )
+                out = torchlet.zeros(a.shape, backend=a.f)
 
             f(*out.tuple(), *a.tuple())
             return out
@@ -126,11 +120,7 @@ class SimpleOps(TensorOps):
             else:
                 c_shape = a.shape
 
-            out = torchlet.zeros(
-                c_shape,
-                backend=a.f,
-                requires_grad=a.requires_grad,
-            )
+            out = torchlet.zeros(c_shape, backend=a.f)
             f(*out.tuple(), *a.tuple(), *b.tuple())
             return out
 
@@ -146,9 +136,7 @@ class SimpleOps(TensorOps):
             out_shape[dim] = 1
 
             # Other values when not sum.
-            out = torchlet.zeros(
-                tuple(out_shape), backend=a.f, requires_grad=a.requires_grad
-            )
+            out = torchlet.zeros(tuple(out_shape), backend=a.f)
             out._tensor._storage[:] = start
 
             f(*out.tuple(), *a.tuple(), dim)
@@ -182,7 +170,7 @@ class SimpleOps(TensorOps):
         assert a.shape[1] == b.shape[0]
 
         out_shape = (a.shape[-2], b.shape[-1])
-        out = torchlet.zeros(out_shape, backend=a.f, requires_grad=a.requires_grad)
+        out = torchlet.zeros(out_shape, backend=a.f)
 
         tensor_matrix_multiply(*out.tuple(), *a.tuple(), *b.tuple())
 
