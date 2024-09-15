@@ -19,10 +19,13 @@ class Linear(Module):
             raise ValueError("out_features must be greater than 0")
 
         self.weight = Parameter(
-            torchlet.rand((in_features, out_features), requires_grad=True)
+            torchlet.rand((in_features, out_features), requires_grad=True),
+            "weight",
         )
         if bias:
-            self.bias = Parameter(torchlet.rand((out_features,), requires_grad=True))
+            self.bias = Parameter(
+                torchlet.rand((out_features,), requires_grad=True), "bias"
+            )
         else:
             self.bias = None
 
