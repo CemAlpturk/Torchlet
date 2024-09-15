@@ -81,6 +81,12 @@ class Module:
 
         return named_parameters
 
+    def add_parameter(self, k: str, v: Any) -> None:
+        """Manually add a parameter. Useful helper for scalar parameters."""
+
+        val = Parameter(v, k)
+        self.__dict__["_parameters"][k] = val
+
     def parameters(self) -> Sequence[Parameter]:
         """
         Enumerate over all the parameters of this module and its decendents.
