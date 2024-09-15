@@ -18,6 +18,11 @@ def add(x: float, y: float) -> float:
     return x + y
 
 
+def pow(x: float, y: float) -> float:
+    """Raise x to the power of y."""
+    return x**y
+
+
 def neg(x: float) -> float:
     """Negate a number."""
     return -x
