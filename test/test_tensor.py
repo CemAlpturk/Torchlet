@@ -202,3 +202,25 @@ def test_reduce_forward_all_dims() -> None:
     t_summed_all = t.sum()
     t_summed_all_expected = tensor([27])
     assert_close(t_summed_all[0], t_summed_all_expected[0])
+
+
+def test_simple_opt() -> None:
+
+    def f(x: Tensor) -> Tensor:
+        return x * x
+
+    x = tensor([2.0], requires_grad=True)
+    ys = []
+    for i in range(10):
+        y = f(x)
+        y.backward()
+
+        assert y.requires_grad
+        assert y.grad is not None
+        assert x.grad is not None
+        x = x - x.grad * 0.1
+        x.reset_history()
+        x.grad = None
+        ys.append(y.detach().item())
+
+        assert x.requires_grad
