@@ -7,8 +7,8 @@ from torchlet.nn import Module, Parameter, Linear
 
 class TestModule:
 
-    def test_init(self) -> None:
-
+    @pytest.fixture(scope="function")
+    def module(self) -> Module:
         class Module2(Module):
             def __init__(self) -> None:
                 super().__init__()
@@ -22,7 +22,9 @@ class TestModule:
                 self.module2 = Module2()
                 self.param = Parameter(torchlet.rand(()))
 
-        module = Module1()
+        return Module1()
+
+    def test_init(self, module: Module) -> None:
 
         assert hasattr(module, "_modules")
         assert hasattr(module, "_parameters")
@@ -42,7 +44,7 @@ class TestModule:
         assert not module.param.value.requires_grad
 
         assert hasattr(module, "module2")
-        assert isinstance(module.module2, Module2)
+        assert isinstance(module.module2, Module)
         assert hasattr(module.module2, "_modules")
         assert hasattr(module.module2, "_parameters")
 
@@ -54,6 +56,45 @@ class TestModule:
 
         assert hasattr(module.module2, "x")
         assert module.module2.x == 1
+
+    def test_modules(self, module: Module) -> None:
+
+        modules = module.modules()
+        assert isinstance(modules, list)
+        assert len(modules) == 1
+        assert isinstance(modules[0], Module)
+        assert modules[0] == module.module2
+
+    def test_train(self, module: Module) -> None:
+        module.train()
+
+        assert module.training
+        assert module.module2.training
+
+    def test_eval(self, module: Module) -> None:
+        module.eval()
+
+        assert not module.training
+        assert not module.module2.training
+
+    def test_named_parameters(self, module: Module) -> None:
+        named_parameters = module.named_parameters()
+        assert isinstance(named_parameters, list)
+        assert len(named_parameters) == 2
+        assert isinstance(named_parameters[0], tuple)
+        assert isinstance(named_parameters[0][0], str)
+        assert isinstance(named_parameters[0][1], Parameter)
+        assert isinstance(named_parameters[1], tuple)
+        assert isinstance(named_parameters[1][0], str)
+        assert isinstance(named_parameters[1][1], Parameter)
+
+    def test_add_parameter(self, module: Module) -> None:
+        param = torchlet.rand((), requires_grad=True)
+        module.add_parameter("param2", param)
+
+        assert "param2" in module._parameters
+        assert hasattr(module, "param2")
+        assert module.param2.value == param
 
 
 @pytest.mark.parametrize("in_features", [1, 2, 3])
@@ -140,3 +181,87 @@ class TestLinear:
             assert isinstance(linear.bias.value, Tensor)
             assert linear.bias.value.grad is not None
             assert linear.bias.value.grad.shape == (out_features,)
+
+
+class TestSimpleModule:
+
+    @pytest.fixture(scope="function")
+    def simple_module(self) -> Module:
+
+        class MLP(Module):
+            def __init__(self) -> None:
+                super().__init__()
+
+                self.linear1 = Linear(3, 2)
+                self.linear2 = Linear(2, 1)
+
+            def forward(self, x: Tensor) -> Tensor:
+                x = self.linear1(x)
+                x = x.relu()
+                x = self.linear2(x)
+                x = x.sigmoid()
+                return x
+
+        return MLP()
+
+    def test_init(self, simple_module: Module) -> None:
+
+        assert hasattr(simple_module, "linear1")
+        assert hasattr(simple_module, "linear2")
+
+        assert isinstance(simple_module.linear1, Linear)
+        assert isinstance(simple_module.linear2, Linear)
+
+        assert hasattr(simple_module.linear1, "weight")
+        assert hasattr(simple_module.linear1, "bias")
+        assert hasattr(simple_module.linear2, "weight")
+        assert hasattr(simple_module.linear2, "bias")
+
+        assert isinstance(simple_module.linear1.weight, Parameter)
+        assert isinstance(simple_module.linear1.bias, Parameter)
+        assert isinstance(simple_module.linear2.weight, Parameter)
+        assert isinstance(simple_module.linear2.bias, Parameter)
+
+        assert isinstance(simple_module.linear1.weight.value, Tensor)
+        assert isinstance(simple_module.linear1.bias.value, Tensor)
+        assert isinstance(simple_module.linear2.weight.value, Tensor)
+        assert isinstance(simple_module.linear2.bias.value, Tensor)
+
+        assert simple_module.linear1.weight.value.shape == (3, 2)
+        assert simple_module.linear1.bias.value.shape == (2,)
+        assert simple_module.linear2.weight.value.shape == (2, 1)
+        assert simple_module.linear2.bias.value.shape == (1,)
+
+        assert simple_module.linear1.weight.value.requires_grad
+        assert simple_module.linear1.bias.value.requires_grad
+        assert simple_module.linear2.weight.value.requires_grad
+        assert simple_module.linear2.bias.value.requires_grad
+
+    @pytest.mark.parametrize("batch_size", [1, 2, 3])
+    def test_forward(self, simple_module: Module, batch_size: int) -> None:
+        size = (batch_size, 3) if batch_size > 1 else (3,)
+        x = torchlet.rand(size)
+
+        out = simple_module(x)
+
+        assert isinstance(out, Tensor)
+        assert out.shape == (batch_size, 1) if batch_size > 1 else (1,)
+
+    @pytest.mark.parametrize("batch_size", [1, 2, 3])
+    def test_backward(self, simple_module: Module, batch_size: int) -> None:
+        size = (batch_size, 3) if batch_size > 1 else (3,)
+        x = torchlet.rand(size)
+
+        out = simple_module(x)
+        y = out.sum()
+        y.backward()
+
+        assert simple_module.linear1.weight.value.grad is not None
+        assert simple_module.linear1.bias.value.grad is not None
+        assert simple_module.linear2.weight.value.grad is not None
+        assert simple_module.linear2.bias.value.grad is not None
+
+        assert simple_module.linear1.weight.value.grad.shape == (3, 2)
+        assert simple_module.linear1.bias.value.grad.shape == (2,)
+        assert simple_module.linear2.weight.value.grad.shape == (2, 1)
+        assert simple_module.linear2.bias.value.grad.shape == (1,)
