@@ -80,7 +80,7 @@ class Tensor:
         else:
             self.name = str(self.unique_id)
 
-        if requires_grad:
+        if requires_grad and torchlet.is_grad_enabled():
             self.history = back if back is not None else History()
         else:
             self.history = None

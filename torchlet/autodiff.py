@@ -1,6 +1,20 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Iterable, Protocol
+from typing import Any, Iterable, Protocol, Callable
+from functools import wraps
+
+
+# Global flag to enable/disable gradient computation
+_grad_enabled = True
+
+
+def is_grad_enabled() -> bool:
+    return _grad_enabled
+
+
+def set_grad_enabled(mode: bool) -> None:
+    global _grad_enabled
+    _grad_enabled = mode
 
 
 # Is this needed?
@@ -101,3 +115,24 @@ class Context:
     @property
     def saved_tensors(self) -> tuple[Any, ...]:
         return self.saved_values
+
+
+class no_grad:
+    """
+    Context manager to disable gradient computation.
+    """
+
+    def __enter__(self) -> None:
+        self.prev = _grad_enabled
+        set_grad_enabled(False)
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        set_grad_enabled(self.prev)
+
+    def __call__(self, func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            with self:
+                return func(*args, **kwargs)
+
+        return wrapper

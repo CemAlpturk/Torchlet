@@ -9,6 +9,12 @@ from .tensor_functions import (
     tensor,
 )
 
+from .autodiff import (
+    is_grad_enabled,
+    set_grad_enabled,
+    no_grad,
+)
+
 
 __all__ = [
     "Tensor",
@@ -17,4 +23,7 @@ __all__ = [
     "ones",
     "rand",
     "tensor",
+    "is_grad_enabled",
+    "set_grad_enabled",
+    "no_grad",
 ]

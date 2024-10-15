@@ -197,8 +197,9 @@ def main(args: argparse.Namespace) -> None:
     X_test = torchlet.tensor(X_test.tolist())
     y_test = torchlet.tensor(y_test.tolist())
     model.eval()
-    y_pred = model(X_test).squeeze()
-    acc = ((y_pred > 0) == (y_test > 0)).mean().item()
+    with torchlet.no_grad():
+        y_pred = model(X_test).squeeze()
+        acc = ((y_pred > 0) == (y_test > 0)).mean().item()
     print(f"Test Accuracy: {acc:.2f}")
 
     # Plot the dataset and results
