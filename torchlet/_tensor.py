@@ -242,10 +242,21 @@ class Tensor:
     def __repr__(self) -> str:
         return self._tensor.to_string()
 
-    # TODO: Implement slicing
-    def __getitem__(self, key: int | UserIndex) -> float:
-        key2 = (key,) if isinstance(key, int) else key
-        return self._tensor.get(key2)
+    def __getitem__(self, key: int | UserIndex) -> Tensor:
+        # TODO: Implement slicing
+        # TODO: Index validation
+        # TODO: Implement negative indexing
+        # TODO: Implement ellipsis?
+
+        # Calculate new shape
+        new_shape = (1,)
+        idx = self._tensor.index(key)
+
+        # Getting the new storage via slicing should ensure
+        # that the storage is shared between the tensors.
+        new_storage = self._tensor._storage[idx : idx + 1]
+
+        return Tensor.make(new_storage, new_shape, backend=self.f)
 
     def __setitem__(self, key: int | UserIndex, val: float) -> None:
         key2 = (key,) if isinstance(key, int) else key

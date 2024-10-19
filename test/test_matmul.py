@@ -8,10 +8,10 @@ def test_2d_matmul() -> None:
     c = a @ b
 
     assert c.shape == (2, 2)
-    assert c[0, 0] == 3.0
-    assert c[0, 1] == 3.0
-    assert c[1, 0] == 3.0
-    assert c[1, 1] == 3.0
+    assert c[0, 0].item() == 3.0
+    assert c[0, 1].item() == 3.0
+    assert c[1, 0].item() == 3.0
+    assert c[1, 1].item() == 3.0
 
 
 def test_2d_matmul_backprop() -> None:
@@ -35,8 +35,8 @@ def test_vector_matmul() -> None:
     c = a @ b
 
     assert c.shape == (2,)
-    assert c[0] == 3.0
-    assert c[1] == 3.0
+    assert c[0].item() == 3.0
+    assert c[1].item() == 3.0
 
     a = torchlet.ones((3, 2))
     b = torchlet.ones((2,))
@@ -44,9 +44,9 @@ def test_vector_matmul() -> None:
     c = a @ b
 
     assert c.shape == (3,)
-    assert c[0] == 2.0
-    assert c[1] == 2.0
-    assert c[2] == 2.0
+    assert c[0].item() == 2.0
+    assert c[1].item() == 2.0
+    assert c[2].item() == 2.0
 
 
 def test_vector_matmul_backprop() -> None:
