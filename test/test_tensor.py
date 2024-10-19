@@ -32,7 +32,7 @@ def test_one_args(
     name, base_fn, tensor_fn = fn
     t2 = tensor_fn(t1)
     for ind in t2._tensor.indices():
-        assert_close(t2[ind], base_fn(t1[ind]))
+        assert_close(t2[ind].item(), base_fn(t1[ind].item()))
 
 
 @given(shaped_tensors(2))
@@ -45,7 +45,7 @@ def test_two_args(
     t1, t2 = ts
     t3 = tensor_fn(t1, t2)
     for ind in t3._tensor.indices():
-        assert_close(t3[ind], base_fn(t1[ind], t2[ind]))
+        assert_close(t3[ind].item(), base_fn(t1[ind].item(), t2[ind].item()))
 
 
 @given(tensors(requires_grad=True))
@@ -201,7 +201,7 @@ def test_reduce_forward_all_dims() -> None:
     t = tensor([[2, 3], [4, 6], [5, 7]])
     t_summed_all = t.sum()
     t_summed_all_expected = tensor([27])
-    assert_close(t_summed_all[0], t_summed_all_expected[0])
+    assert_close(t_summed_all[0].item(), t_summed_all_expected[0].item())
 
 
 def test_simple_opt() -> None:

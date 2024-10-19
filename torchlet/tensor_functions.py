@@ -238,7 +238,9 @@ class Permute(Function):
         """
         Converts a tensor or numpy array to an int tuple
         """
-        return tuple([int(t[i]) for i in range(t.size)])
+        if isinstance(t, torchlet.Tensor):
+            return tuple([int(t[i].item()) for i in range(t.size)])
+        return tuple([int(t[i]) for i in range(len(t))])
 
     @staticmethod
     def forward(ctx: Context, a: Tensor, order: Tensor) -> Tensor:
@@ -260,7 +262,7 @@ class Permute(Function):
 
         # Generate inverse permutation
         for i in range(order.size):
-            restore_order[int(order[i])] = i
+            restore_order[int(order[i].item())] = i
 
         new_tensor_data = grad_out._tensor.permute(*Permute.to_tuple(restore_order))
         new_t_storage, new_t_shape, new_t_strides = new_tensor_data.tuple()
@@ -281,7 +283,7 @@ class View(Function):
     def forward(ctx: Context, a: Tensor, shape: Tensor) -> Tensor:
         ctx.save_for_backward(a.shape)
         assert a._tensor.is_contiguous(), "Input tensor must be contiguous"
-        shape2 = [int(shape[i]) for i in range(shape.size)]
+        shape2 = [int(shape[i].item()) for i in range(shape.size)]
         return torchlet.Tensor.make(a._tensor._storage, tuple(shape2), backend=a.f)
 
     @staticmethod
@@ -516,7 +518,7 @@ def grad_central_difference(
     vals2 = [x if j != arg else x - up for j, x in enumerate(vals)]
     delta: Tensor = f(*vals1).sum() - f(*vals2).sum()
 
-    return delta[0] / (2.0 * epsilon)
+    return delta[0].item() / (2.0 * epsilon)
 
 
 def grad_check(f: Any, *vals: Tensor) -> None:
@@ -541,9 +543,9 @@ but was expecting derivative %f from central difference.
         check = grad_central_difference(f, *vals, arg=i, ind=ind)
         assert x.grad is not None
         np.testing.assert_allclose(
-            x.grad[ind],
+            x.grad[ind].item(),
             check,
             1e-2,
             1e-2,
-            err_msg=err_msg % (f, vals, x.grad[ind], i, ind, check),
+            err_msg=err_msg % (f, vals, x.grad[ind].item(), i, ind, check),
         )
