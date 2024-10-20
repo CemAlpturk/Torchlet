@@ -248,8 +248,14 @@ class Tensor:
         # TODO: Implement negative indexing
         # TODO: Implement ellipsis?
 
+        key = (key,) if isinstance(key, int) else key
+
         # Calculate new shape
         new_shape = (1,)
+
+        # Handle negative indexes
+        key = tuple(k + self.shape[i] if k < 0 else k for i, k in enumerate(key))
+
         idx = self._tensor.index(key)
 
         # Getting the new storage via slicing should ensure
