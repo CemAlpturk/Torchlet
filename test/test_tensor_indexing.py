@@ -1,6 +1,7 @@
 import pytest
 
-from torchlet import Tensor, tensor
+from torchlet import tensor
+from torchlet.tensor_data import IndexingError
 
 
 def test_one_dim() -> None:
@@ -56,3 +57,9 @@ def test_negative_index_2d() -> None:
     assert t1[-2, -1].item() == 3
     assert t1[-2, -2].item() == 2
     assert t1[-2, -3].item() == 1
+
+
+def test_indexing_error() -> None:
+    t1 = tensor([1, 2, 3, 4, 5])
+    with pytest.raises(IndexingError):
+        t1[5]
