@@ -8,7 +8,7 @@ import numpy as np
 import torchlet
 from torchlet import scalar_ops
 from torchlet.autodiff import Context, Variable, backpropagate
-from torchlet.tensor_data import TensorData
+from torchlet.tensor_data import TensorData, IndexingError
 from torchlet import tensor_functions as F
 
 if TYPE_CHECKING:
@@ -245,7 +245,6 @@ class Tensor:
     def __getitem__(self, key: int | UserIndex) -> Tensor:
         # TODO: Implement slicing
         # TODO: Index validation
-        # TODO: Implement negative indexing
         # TODO: Implement ellipsis?
 
         key = (key,) if isinstance(key, int) else key
@@ -255,6 +254,12 @@ class Tensor:
 
         # Handle negative indexes
         key = tuple(k + self.shape[i] if k < 0 else k for i, k in enumerate(key))
+
+        # Validate the key
+        if not all(0 <= k < self.shape[i] for i, k in enumerate(key)):
+            raise IndexingError(
+                f"Index out of bounds. Shape: {self.shape} Index: {key}"
+            )
 
         idx = self._tensor.index(key)
 
