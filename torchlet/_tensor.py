@@ -251,9 +251,12 @@ class Tensor:
         if isinstance(key, (int, slice)):
             key = (key,)
 
+        if isinstance(key, list):
+            key = tuple(key)
+
         # if length of key is less than the number of dimensions, pad with slices
         if len(key) < self.dims:
-            key += (slice(None),) * (self.dims - len(key))
+            key = tuple(list(key) + [slice(None)] * (self.dims - len(key)))
 
         # Calculate new shape
         new_shape = []
@@ -262,7 +265,6 @@ class Tensor:
         end_offset = 0
         for i, k in enumerate(key):
             if isinstance(k, int):
-                # TODO: Handle negative indeces
                 ki = k + self.shape[i] if k < 0 else k
 
                 # Handle out of bounds
