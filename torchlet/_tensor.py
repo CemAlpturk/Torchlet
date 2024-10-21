@@ -242,32 +242,49 @@ class Tensor:
     def __repr__(self) -> str:
         return self._tensor.to_string()
 
-    def __getitem__(self, key: int | UserIndex) -> Tensor:
-        # TODO: Implement slicing
-        # TODO: Index validation
+    def __getitem__(
+        self, key: int | UserIndex | slice | tuple[int | slice, ...]
+    ) -> Tensor:
         # TODO: Implement ellipsis?
 
-        key = (key,) if isinstance(key, int) else key
+        # Convert input to tuple of ints or slices
+        if isinstance(key, (int, slice)):
+            key = (key,)
+
+        # if length of key is less than the number of dimensions, pad with slices
+        if len(key) < self.dims:
+            key += (slice(None),) * (self.dims - len(key))
 
         # Calculate new shape
-        new_shape = (1,)
+        new_shape = []
+        new_strides = []
+        start_offset = 0
+        end_offset = 0
+        for i, k in enumerate(key):
+            if isinstance(k, int):
+                # TODO: Handle negative indeces
+                ki = k + self.shape[i] if k < 0 else k
 
-        # Handle negative indexes
-        key = tuple(k + self.shape[i] if k < 0 else k for i, k in enumerate(key))
+                # Handle out of bounds
+                if ki < 0 or ki >= self.shape[i]:
+                    raise IndexingError(
+                        f"Index {ki} is out of bounds for dimension {i} with size {self.shape[i]}"
+                    )
+                start = ki
+                stop = ki + 1
+                step = 1
+            else:
+                start, stop, step = k.indices(self.shape[i])
+                new_shape.append((stop - start) // step)
+                new_strides.append(self._tensor._strides[i] * step)
+            start_offset += start * self._tensor._strides[i]
+            end_offset += (stop - 1) * self._tensor._strides[i]
 
-        # Validate the key
-        if not all(0 <= k < self.shape[i] for i, k in enumerate(key)):
-            raise IndexingError(
-                f"Index out of bounds. Shape: {self.shape} Index: {key}"
-            )
+        new_shape = tuple(new_shape)
+        new_strides = tuple(new_strides)
 
-        idx = self._tensor.index(key)
-
-        # Getting the new storage via slicing should ensure
-        # that the storage is shared between the tensors.
-        new_storage = self._tensor._storage[idx : idx + 1]
-
-        return Tensor.make(new_storage, new_shape, backend=self.f)
+        new_storage = self._tensor._storage[start_offset : end_offset + 1]
+        return Tensor.make(new_storage, new_shape, strides=new_strides, backend=self.f)
 
     def __setitem__(self, key: int | UserIndex, val: float) -> None:
         key2 = (key,) if isinstance(key, int) else key
