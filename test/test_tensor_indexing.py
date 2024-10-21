@@ -88,3 +88,62 @@ def test_slice_2d() -> None:
     assert b[0, 1].item() == 6
     assert b[1, 0].item() == 8
     assert b[1, 1].item() == 9
+
+
+def test_mixed_indexing() -> None:
+    """Test mixed indexing."""
+    t1 = tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    b = t1[1, 1:3]
+    assert isinstance(b, Tensor)
+    assert b.shape == (2,)
+    assert b[0].item() == 5
+    assert b[1].item() == 6
+
+    b = t1[1:3, 1]
+    assert isinstance(b, Tensor)
+    assert b.shape == (2,)
+    assert b[0].item() == 5
+    assert b[1].item() == 8
+
+    b = t1[1:3, 1:3]
+    assert isinstance(b, Tensor)
+    assert b.shape == (2, 2)
+    assert b[0, 0].item() == 5
+    assert b[0, 1].item() == 6
+    assert b[1, 0].item() == 8
+    assert b[1, 1].item() == 9
+
+    b = t1[0, :]
+    assert isinstance(b, Tensor)
+    assert b.shape == (3,)
+    assert b[0].item() == 1
+    assert b[1].item() == 2
+    assert b[2].item() == 3
+
+    b = t1[:, 0]
+    assert isinstance(b, Tensor)
+    assert b.shape == (3,)
+    assert b[0].item() == 1
+    assert b[1].item() == 4
+    assert b[2].item() == 7
+
+    b = t1[1]
+    assert isinstance(b, Tensor)
+    assert b.shape == (3,)
+    assert b[0].item() == 4
+    assert b[1].item() == 5
+    assert b[2].item() == 6
+
+    b = t1[-1]
+    assert isinstance(b, Tensor)
+    assert b.shape == (3,)
+    assert b[0].item() == 7
+    assert b[1].item() == 8
+    assert b[2].item() == 9
+
+    b = t1[:, -1]
+    assert isinstance(b, Tensor)
+    assert b.shape == (3,)
+    assert b[0].item() == 3
+    assert b[1].item() == 6
+    assert b[2].item() == 9
