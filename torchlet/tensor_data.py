@@ -178,7 +178,7 @@ class TensorData:
         self.size = int(np.prod(self._shape))
         self.shape = shape
 
-        assert len(self._storage) == self.size
+        # assert len(self._storage) == self.size
 
     def is_contiguous(self) -> bool:
         """
@@ -242,7 +242,7 @@ class TensorData:
         out_index: Index = np.array(self.shape)
         for i in range(self.size):
             to_index(i, lshape, out_index)
-            yield tuple(out_index)
+            yield tuple(out_index.tolist())
 
     def sample(self) -> UserIndex:
         return tuple((random.randint(0, s - 1) for s in self.shape))

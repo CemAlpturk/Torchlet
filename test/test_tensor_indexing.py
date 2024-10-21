@@ -1,12 +1,13 @@
 import pytest
 
-from torchlet import tensor
+from torchlet import tensor, Tensor
 from torchlet.tensor_data import IndexingError
 
 
 def test_one_dim() -> None:
     """Test indexing a 1D tensor."""
     t1 = tensor([1, 2, 3, 4, 5])
+    assert isinstance(t1, Tensor)
     assert t1[0].item() == 1
     assert t1[1].item() == 2
     assert t1[2].item() == 3
@@ -62,4 +63,28 @@ def test_negative_index_2d() -> None:
 def test_indexing_error() -> None:
     t1 = tensor([1, 2, 3, 4, 5])
     with pytest.raises(IndexingError):
-        t1[5]
+        print(t1[5])
+
+
+def test_slice() -> None:
+    """Test slicing."""
+    t1 = tensor([1, 2, 3, 4, 5])
+    b = t1[1:4]
+    assert isinstance(b, Tensor)
+    assert b.shape == (3,)
+    assert b[0].item() == 2
+    assert b[1].item() == 3
+    assert b[2].item() == 4
+
+
+def test_slice_2d() -> None:
+    """Test slicing in 2d array."""
+
+    t1 = tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    b = t1[1:3, 1:3]
+    assert isinstance(b, Tensor)
+    assert b.shape == (2, 2)
+    assert b[0, 0].item() == 5
+    assert b[0, 1].item() == 6
+    assert b[1, 0].item() == 8
+    assert b[1, 1].item() == 9
