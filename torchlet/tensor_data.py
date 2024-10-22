@@ -301,31 +301,3 @@ class TensorData:
             shape=new_shape,
             strides=new_strides,
         )
-
-    def to_string(self) -> str:
-        """
-        Return the tensor as a string.
-        """
-
-        s = ""
-        for index in self.indices():
-            ls = ""
-            for i in range(len(index) - 1, -1, -1):
-                if index[i] == 0:
-                    ls = "\n%s[" % ("\t" * i) + ls
-                else:
-                    break
-            s += ls
-            v = self.get(index)
-            s += f"{v:3.2f}"
-            ls = ""
-            for i in range(len(index) - 1, -1, -1):
-                if index[i] == self.shape[i] - 1:
-                    ls += "]"
-                else:
-                    break
-            if ls:
-                s += ls
-            else:
-                s += " "
-        return s

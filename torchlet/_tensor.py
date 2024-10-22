@@ -240,7 +240,31 @@ class Tensor:
         return F.Copy.apply(self)
 
     def __repr__(self) -> str:
-        return self._tensor.to_string()
+        def build_str(
+            curr_shape: Sequence[int], curr_indices: tuple[int, ...] = ()
+        ) -> str:
+            if len(curr_shape) == 1:
+                # Last dimension
+                row = [
+                    float(self._tensor.get(curr_indices + (i,)))
+                    for i in range(curr_shape[0])
+                ]
+                return str(row)
+            else:
+                # Recursively build rows for each slice of the tensor
+                s = f",\n{' ' * (8 + len(curr_indices))}"
+                return (
+                    "["
+                    + s.join(
+                        build_str(curr_shape[1:], curr_indices + (i,))
+                        for i in range(curr_shape[0])
+                    )
+                    + "]"
+                )
+
+        data_str = build_str(self.shape)
+        requires_grad = ", requires_grad=True" if self.requires_grad else ""
+        return f"tensor({data_str}{requires_grad})"
 
     def __getitem__(
         self, key: int | UserIndex | slice | tuple[int | slice, ...]

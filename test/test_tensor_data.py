@@ -93,8 +93,3 @@ def test_shape_broadcast() -> None:
 
     c = shape_broadcast((2, 5), (5,))
     assert c == (2, 5)
-
-
-@given(tensor_data())
-def test_string(tensor_data: TensorData) -> None:
-    tensor_data.to_string()
