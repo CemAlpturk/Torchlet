@@ -6,3 +6,4 @@
 test/.hypothesis/
 .hypothesis/
 notebooks/
+dist/
