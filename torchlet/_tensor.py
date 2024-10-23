@@ -275,7 +275,7 @@ class Tensor:
         if isinstance(key, (int, slice)):
             key = (key,)
 
-        if isinstance(key, list):
+        if not isinstance(key, tuple):
             key = tuple(key)
 
         # if length of key is less than the number of dimensions, pad with slices
