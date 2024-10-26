@@ -147,3 +147,10 @@ def test_mixed_indexing() -> None:
     assert b[0].item() == 3
     assert b[1].item() == 6
     assert b[2].item() == 9
+
+
+def test_setitem_index_1d() -> None:
+    """Test setting an item."""
+    t1 = tensor([1, 2, 3, 4, 5])
+    t1[1] = 10
+    assert t1[1].item() == 10
