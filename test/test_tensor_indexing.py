@@ -154,3 +154,24 @@ def test_setitem_index_1d() -> None:
     t1 = tensor([1, 2, 3, 4, 5])
     t1[1] = 10
     assert t1[1].item() == 10
+
+
+def test_setitem_index_2d() -> None:
+    """Test setting an item."""
+    t1 = tensor([[1, 2, 3], [4, 5, 6]])
+    t1[1, 1] = 10
+    assert t1[1, 1].item() == 10
+
+
+def test_setitem_index_3d() -> None:
+    """Test setting an item."""
+    t1 = tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    t1[1, 1, 1] = 10
+    assert t1[1, 1, 1].item() == 10
+
+
+def test_setitem_negative_index() -> None:
+    """Test setting an item."""
+    t1 = tensor([1, 2, 3, 4, 5])
+    t1[-1] = 10
+    assert t1[-1].item() == 10

@@ -333,6 +333,9 @@ class Tensor:
                 f"Indexing with {len(key)} dimensions but tensor has {self.dims}"
             )
 
+        # Handle negative indices
+        key = tuple(k + self.shape[i] if k < 0 else k for i, k in enumerate(key))
+
         # Check shape of value
         if isinstance(val, Tensor):
             if val.size != 1:
