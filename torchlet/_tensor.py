@@ -312,9 +312,40 @@ class Tensor:
         new_storage = self._tensor._storage[start_offset : end_offset + 1]
         return Tensor.make(new_storage, new_shape, strides=new_strides, backend=self.f)
 
-    def __setitem__(self, key: int | UserIndex, val: float) -> None:
-        key2 = (key,) if isinstance(key, int) else key
-        self._tensor.set(key2, val)
+    # def __setitem__(self, key: int | UserIndex, val: float) -> None:
+    #     key2 = (key,) if isinstance(key, int) else key
+    #     self._tensor.set(key2, val)
+
+    def __setitem__(
+        self,
+        key: int | UserIndex,
+        val: int | float | Tensor,
+    ) -> None:
+        # Convert int to tuple of ints or slices
+        if isinstance(key, int):
+            key = (key,)
+
+        if not isinstance(key, tuple):
+            key = tuple(key)
+
+        if len(key) < self.dims:
+            raise IndexError(
+                f"Indexing with {len(key)} dimensions but tensor has {self.dims}"
+            )
+
+        # Check shape of value
+        if isinstance(val, Tensor):
+            if val.size != 1:
+                raise ValueError("Can only assign scalars to tensor slices")
+            val = val.item()
+
+        # TODO: Cast to tensor dtype
+        if not isinstance(val, (int, float)):
+            raise ValueError("Can only assign scalars to tensor slices")
+
+        # Find the index in memory
+        index = self._tensor.index(key)
+        self._tensor._storage[index] = val
 
     # Internal methods for autodiff
     def _type_(self, backend: TensorBackend) -> None:
