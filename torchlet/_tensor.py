@@ -1,7 +1,7 @@
 from __future__ import annotations
-
+from typing import TYPE_CHECKING, Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from itertools import product
 
 import numpy as np
 
@@ -312,43 +312,74 @@ class Tensor:
         new_storage = self._tensor._storage[start_offset : end_offset + 1]
         return Tensor.make(new_storage, new_shape, strides=new_strides, backend=self.f)
 
-    # def __setitem__(self, key: int | UserIndex, val: float) -> None:
-    #     key2 = (key,) if isinstance(key, int) else key
-    #     self._tensor.set(key2, val)
+    def _key_iterator(self, key: tuple[int | slice, ...]) -> Iterator[tuple[int, ...]]:
+        """Iterate over the keys and return a tuple of integers."""
+        ranges = []
+        for dim_key, dim_size in zip(key, self.shape):
+            if isinstance(dim_key, int):
+                if dim_key < 0:
+                    dim_key += dim_size
+                if not (0 <= dim_key < dim_size):
+                    raise IndexingError(
+                        f"Index {dim_key} out of bounds for dimension {dim_size}"
+                    )
+                ranges.append([dim_key])
+            elif isinstance(dim_key, slice):
+                start, stop, step = dim_key.indices(dim_size)
+                ranges.append(range(start, stop, step))
+            else:
+                raise ValueError(f"Invalid key {dim_key}")
+
+        for idx in product(*ranges):
+            yield tuple(idx)
 
     def __setitem__(
         self,
-        key: int | UserIndex,
+        key: int | UserIndex | slice | tuple[int | slice, ...],
         val: int | float | Tensor,
     ) -> None:
         # Convert int to tuple of ints or slices
-        if isinstance(key, int):
+        if isinstance(key, (int, slice)):
             key = (key,)
 
         if not isinstance(key, tuple):
             key = tuple(key)
 
+        # if length of key is less than the number of dimensions, pad with slices
         if len(key) < self.dims:
-            raise IndexError(
-                f"Indexing with {len(key)} dimensions but tensor has {self.dims}"
-            )
+            key = tuple(list(key) + [slice(None)] * (self.dims - len(key)))
 
-        # Handle negative indices
-        key = tuple(k + self.shape[i] if k < 0 else k for i, k in enumerate(key))
+        assert len(key) == self.dims, f"{len(key)} != {self.dims}"
+        assert isinstance(val, (int, float, Tensor)), f"Invalid value {val}"
 
-        # Check shape of value
-        if isinstance(val, Tensor):
-            if val.size != 1:
-                raise ValueError("Can only assign scalars to tensor slices")
-            val = val.item()
+        key_idxs = list(self._key_iterator(key))
+        if len(key_idxs) == 1:
+            if isinstance(val, (int, float)):
+                self._tensor._storage[self._tensor.index(key_idxs[0])] = val
+            elif isinstance(val, Tensor):
+                assert val.size == 1, f"Expected scalar, got {val.size}"
+                self._tensor._storage[self._tensor.index(key_idxs[0])] = val.item()
+            else:
+                raise ValueError(f"Invalid value {val}")
+        else:
+            if isinstance(val, (int, float)):
+                for idx in key_idxs:
+                    self._tensor._storage[self._tensor.index(idx)] = val
+            elif isinstance(val, Tensor):
+                if val.size != len(key_idxs):
+                    raise ValueError(f"Expected {len(key_idxs)} values, got {val.size}")
+                for idx, v in zip(key_idxs, val._tensor._storage):
+                    self._tensor._storage[self._tensor.index(idx)] = v
 
-        # TODO: Cast to tensor dtype
-        if not isinstance(val, (int, float)):
-            raise ValueError("Can only assign scalars to tensor slices")
-
-        # Find the index in memory
-        index = self._tensor.index(key)
-        self._tensor._storage[index] = val
+        # if isinstance(val, (int, float)):
+        #     assert len(key_idxs) == 1, f"Expected 1 index, got {len(key_idxs)}"
+        #     self._tensor._storage[self._tensor.index(key_idxs[0])] = val
+        # else:
+        #     assert (
+        #         len(key_idxs) == val.size
+        #     ), f"Expected {val.size} indices, got {len(key_idxs)}"
+        #     for idx, v in zip(key_idxs, val._tensor._storage):
+        #         self._tensor._storage[self._tensor.index(idx)] = v
 
     # Internal methods for autodiff
     def _type_(self, backend: TensorBackend) -> None:
