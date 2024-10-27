@@ -10,3 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - CHANGELOG.md file
 - Added slicing support for the `Tensor` class (#34)
+- `arange` function
+- Testing to the CI pipeline
+
+### Removed
+- Linting from the CI pipeline
