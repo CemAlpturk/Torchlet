@@ -433,6 +433,37 @@ def rand(
     return tensor
 
 
+def arange(
+    end: int,
+    start: int = 0,
+    step: int = 1,
+    *,
+    backend: TensorBackend = SimpleBackend,
+    requires_grad: bool = False,
+) -> Tensor:
+    """
+    Produce a range tensor from `start` to `end` with step `step`.
+
+    Args:
+        end (int): The end of the range.
+        start (int): The start of the range.
+        step (int): The step of the range.
+        backend (TensorBackend): The backend to use.
+        requires_grad (bool): Whether to compute gradients.
+
+    Returns:
+        Tensor: The range tensor.
+    """
+    vals = [float(x) for x in range(start, end, step)]
+    tensor = torchlet.Tensor.make(
+        vals,
+        (len(vals),),
+        backend=backend,
+        requires_grad=requires_grad,
+    )
+    return tensor
+
+
 def _tensor(
     ls: Any,
     shape: UserShape,

@@ -6,6 +6,7 @@ from .tensor_functions import (
     zeros,
     ones,
     rand,
+    arange,
     tensor,
 )
 
@@ -22,6 +23,7 @@ __all__ = [
     "zeros",
     "ones",
     "rand",
+    "arange",
     "tensor",
     "is_grad_enabled",
     "set_grad_enabled",
