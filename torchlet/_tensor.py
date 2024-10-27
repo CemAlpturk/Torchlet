@@ -371,16 +371,6 @@ class Tensor:
                 for idx, v in zip(key_idxs, val._tensor._storage):
                     self._tensor._storage[self._tensor.index(idx)] = v
 
-        # if isinstance(val, (int, float)):
-        #     assert len(key_idxs) == 1, f"Expected 1 index, got {len(key_idxs)}"
-        #     self._tensor._storage[self._tensor.index(key_idxs[0])] = val
-        # else:
-        #     assert (
-        #         len(key_idxs) == val.size
-        #     ), f"Expected {val.size} indices, got {len(key_idxs)}"
-        #     for idx, v in zip(key_idxs, val._tensor._storage):
-        #         self._tensor._storage[self._tensor.index(idx)] = v
-
     # Internal methods for autodiff
     def _type_(self, backend: TensorBackend) -> None:
         self.f = backend
