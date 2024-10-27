@@ -276,3 +276,24 @@ def test_setitem_incorrect_shape_assignment() -> None:
     # Test setting with incorrect shape (should raise error)
     with pytest.raises(ValueError):
         tensor_2d[:, :] = tensor([1, 2, 3, 4])  # Shape mismatch
+
+
+def test_shared_memory() -> None:
+    t1 = tensor([1, 2, 3, 4, 5])
+    t2 = t1
+    t2[1] = 10
+    assert t1[1].item() == 10
+    assert t2[1].item() == 10
+
+
+def test_shared_memory_slice() -> None:
+    t1 = torchlet.arange(5)
+    t2 = t1[0:1]
+    t2[0] = 10
+    assert t1[0].item() == 10
+
+    t1 = torchlet.arange(5)
+    t2 = t1[1:3]
+    t2[0] = 10
+    assert t1[1].item() == 10
+    assert t2[0].item() == 10
