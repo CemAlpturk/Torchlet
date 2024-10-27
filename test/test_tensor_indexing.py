@@ -1,5 +1,6 @@
 import pytest
 
+import torchlet
 from torchlet import tensor, Tensor
 from torchlet.tensor_data import IndexingError
 
@@ -171,7 +172,107 @@ def test_setitem_index_3d() -> None:
 
 
 def test_setitem_negative_index() -> None:
-    """Test setting an item."""
+    """Test setting with negative indexing."""
     t1 = tensor([1, 2, 3, 4, 5])
-    t1[-1] = 10
-    assert t1[-1].item() == 10
+    t1[-1] = 50
+    t1[-2] = 40
+    assert t1[-1].item() == 50
+    assert t1[-2].item() == 40
+
+
+def test_setitem_slice() -> None:
+    """Test setting a slice."""
+    t1 = tensor([1, 2, 3, 4, 5])
+    t1[1:4] = tensor([10, 20, 30])
+    assert t1[1].item() == 10
+    assert t1[2].item() == 20
+    assert t1[3].item() == 30
+
+
+def test_setitem_slice_2d() -> None:
+    """Test setting a 2D slice."""
+    t1 = tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    t1[1:, 1:] = tensor([[10, 20], [30, 40]])
+    print(t1)
+    assert t1[1, 1].item() == 10
+    assert t1[1, 2].item() == 20
+    assert t1[2, 1].item() == 30
+    assert t1[2, 2].item() == 40
+
+    t1 = tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    t1[0] = tensor([10, 20, 30])
+    assert t1[0, 0].item() == 10
+    assert t1[0, 1].item() == 20
+    assert t1[0, 2].item() == 30
+
+
+def test_setitem_slice_1d() -> None:
+    tensor_1d = tensor([0, 1, 2, 3, 4])
+    tensor_1d[1:4] = 99
+    assert tensor_1d[1].item() == 99
+    assert tensor_1d[2].item() == 99
+    assert tensor_1d[3].item() == 99
+
+
+def test_setitem_slice_2d_() -> None:
+    tensor_2d = tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    tensor_2d[:, 1] = 0
+    assert tensor_2d[0, 1].item() == 0
+    assert tensor_2d[1, 1].item() == 0
+    assert tensor_2d[2, 1].item() == 0
+
+
+def test_setitem_slice_3d() -> None:
+    tensor_3d = tensor(list(range(27))).view(3, 3, 3)
+    tensor_3d[1, :, :] = torchlet.ones((3, 3))
+    assert tensor_3d[1, 0, 0].item() == 1
+    assert tensor_3d[1, 0, 1].item() == 1
+    assert tensor_3d[1, 0, 2].item() == 1
+    assert tensor_3d[1, 1, 0].item() == 1
+    assert tensor_3d[1, 1, 1].item() == 1
+    assert tensor_3d[1, 1, 2].item() == 1
+    assert tensor_3d[1, 2, 0].item() == 1
+    assert tensor_3d[1, 2, 1].item() == 1
+    assert tensor_3d[1, 2, 2].item() == 1
+
+
+def test_setitem_advanced_indexing() -> None:
+    tensor_3d = tensor(list(range(27))).view(3, 3, 3)
+    tensor_3d[1, :, 2] = 42
+    assert tensor_3d[1, 0, 2].item() == 42
+    assert tensor_3d[1, 1, 2].item() == 42
+    assert tensor_3d[1, 2, 2].item() == 42
+
+
+def test_setitem_broadcasting_scalar_to_slice() -> None:
+    tensor_2d = tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    tensor_2d[:, :] = 7
+    for idx in tensor_2d._tensor.indices():
+        assert tensor_2d[idx] == 7
+
+
+def test_setitem_broadcasting_tensor_to_slice() -> None:
+    tensor_2d = tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    replacement = tensor([[-1, -1, -1], [-2, -2, -2], [-3, -3, -3]])
+    tensor_2d[:, :] = replacement
+    for idx in tensor_2d._tensor.indices():
+        assert tensor_2d[idx] == replacement[idx]
+
+
+def test_setitem_out_of_bounds() -> None:
+    tensor_1d = tensor([0, 1, 2, 3, 4])
+    tensor_2d = tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+
+    with pytest.raises(IndexingError):
+        tensor_1d[10] = 5  # Out of bounds for 1D tensor
+
+    with pytest.raises(IndexingError):
+        tensor_2d[3, 3] = 5  # Out of bounds for 2D tensor
+
+
+def test_setitem_incorrect_shape_assignment() -> None:
+    tensor_2d = tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+
+    # Test setting with incorrect shape (should raise error)
+    with pytest.raises(ValueError):
+        tensor_2d[:, :] = tensor([1, 2, 3, 4])  # Shape mismatch
