@@ -223,7 +223,7 @@ def test_setitem_slice_2d_() -> None:
 
 
 def test_setitem_slice_3d() -> None:
-    tensor_3d = tensor(list(range(27))).view(3, 3, 3)
+    tensor_3d = torchlet.arange(27).view(3, 3, 3)
     tensor_3d[1, :, :] = torchlet.ones((3, 3))
     assert tensor_3d[1, 0, 0].item() == 1
     assert tensor_3d[1, 0, 1].item() == 1
@@ -237,7 +237,7 @@ def test_setitem_slice_3d() -> None:
 
 
 def test_setitem_advanced_indexing() -> None:
-    tensor_3d = tensor(list(range(27))).view(3, 3, 3)
+    tensor_3d = torchlet.arange(27).view(3, 3, 3)
     tensor_3d[1, :, 2] = 42
     assert tensor_3d[1, 0, 2].item() == 42
     assert tensor_3d[1, 1, 2].item() == 42
