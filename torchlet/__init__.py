@@ -8,6 +8,7 @@ from .tensor_functions import (
     rand,
     arange,
     tensor,
+    concat,
 )
 
 from .autodiff import (
@@ -25,6 +26,7 @@ __all__ = [
     "rand",
     "arange",
     "tensor",
+    "concat",
     "is_grad_enabled",
     "set_grad_enabled",
     "no_grad",

@@ -4,7 +4,7 @@ import pytest
 from hypothesis import given
 from hypothesis.strategies import DataObject, data, lists, permutations
 
-from torchlet import Tensor, tensor
+from torchlet import Tensor, tensor, concat, zeros, ones
 from torchlet.tensor_functions import grad_check
 
 from .strategies import assert_close, small_floats
@@ -224,3 +224,27 @@ def test_simple_opt() -> None:
         ys.append(y.detach().item())
 
         assert x.requires_grad
+
+
+def test_concat() -> None:
+
+    a = zeros((2,))
+    b = ones((2,))
+    c = concat([a, b])
+    assert c.shape == (4,)
+    assert c[0].item() == 0
+    assert c[2].item() == 1
+
+    a = zeros((2, 2))
+    b = ones((2, 2))
+    c = concat([a, b], 0)
+    assert c.shape == (4, 2)
+    assert c[0, 0].item() == 0
+    assert c[2, 0].item() == 1
+
+    a = zeros((2, 2))
+    b = ones((2, 2))
+    c = concat([a, b], 1)
+    assert c.shape == (2, 4)
+    assert c[0, 0].item() == 0
+    assert c[0, 2].item() == 1
