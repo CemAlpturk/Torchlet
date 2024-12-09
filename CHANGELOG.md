@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added slicing support for the `Tensor` class (#34)
 - `arange` function
 - Testing to the CI pipeline
+- `concat` function and tests (#36)
+- `DataLoader` iteration batches the data in new dimension (#36)
 
 ### Removed
 - Linting from the CI pipeline
