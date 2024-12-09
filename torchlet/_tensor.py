@@ -241,7 +241,8 @@ class Tensor:
 
     def __repr__(self) -> str:
         def build_str(
-            curr_shape: Sequence[int], curr_indices: tuple[int, ...] = ()
+            curr_shape: Sequence[int],
+            curr_indices: tuple[int, ...] = (),
         ) -> str:
             if len(curr_shape) == 1:
                 # Last dimension
@@ -262,7 +263,7 @@ class Tensor:
                     + "]"
                 )
 
-        data_str = build_str(self.shape)
+        data_str = build_str(self.shape) if self.shape else str(self.item())
         requires_grad = ", requires_grad=True" if self.requires_grad else ""
         return f"tensor({data_str}{requires_grad})"
 
