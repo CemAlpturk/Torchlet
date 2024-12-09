@@ -13,7 +13,7 @@ from torchlet.tensor_ops import TensorBackend, SimpleBackend
 from torchlet.scalar_ops import prod
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Sequence
     from ._tensor import Tensor, Shape, Strides
     from .tensor_data import UserShape, UserIndex
 
@@ -530,6 +530,47 @@ def tensor(
         backend=backend,
         requires_grad=requires_grad,
     )
+
+
+def concat(tensors: Sequence[Tensor], dim: int = 0) -> Tensor:
+    """
+    Concatenate a sequence of tensors along a given dimension.
+    Does not support backpropagation.
+    This implementation creates a new tensor and copies data from the input tensors, which can be inefficient for large tensors.
+    A more efficient approach would be to directly manipulate the underlying storage of the tensors to avoid unnecessary data copying.
+
+    Args:
+        tensors (Sequence[Tensor]): The sequence of tensors to concatenate.
+        dim (int): The dimension along which to concatenate.
+
+    Returns:
+        Tensor: The concatenated tensor.
+    """
+    # Ensure all tensors have the same shape except for the concatenation dimension
+    shapes = [tensor.shape for tensor in tensors]
+    for i in range(len(shapes[0])):
+        if i != dim:
+            for shape in shapes:
+                if shape[i] != shapes[0][i]:
+                    raise ValueError(
+                        "All tensors must have the same shape except for the concatenation dimension"
+                    )
+
+    # Calculate the new shape
+    new_shape = list(shapes[0])
+    new_shape[dim] = sum(shape[dim] for shape in shapes)
+
+    # Bad way of doing this, fix this later
+    concatenated_tensor = zeros(tuple(new_shape), backend=tensors[0].f)
+
+    pos = 0
+    for t, shape in zip(tensors, shapes):
+        idx = [slice(None)] * len(new_shape)
+        idx[dim] = slice(pos, pos + shape[dim])
+        concatenated_tensor[tuple(idx)] = t
+        pos += shape[dim]
+
+    return concatenated_tensor
 
 
 # Gradient check for tensors
