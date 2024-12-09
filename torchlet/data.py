@@ -1,8 +1,8 @@
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import Any, Iterator, cast
 import random
 
-if TYPE_CHECKING:
-    from torchlet import Tensor
+
+from torchlet import Tensor, concat
 
 
 class Dataset:
@@ -46,11 +46,20 @@ class DataLoader:
 
             batch = [self.dataset[idx] for idx in batch_indices]
 
+            def add_batch_dim(x: Tensor) -> Tensor:
+                return x.unsqueeze(0)
+
             if isinstance(batch[0], tuple):
                 # Transpose the batch to seperate each element
-                yield tuple(zip(*batch))
+                yield tuple(
+                    map(
+                        concat,
+                        map(lambda x: tuple(map(add_batch_dim, x)), tuple(zip(*batch))),
+                    )
+                )
             else:
-                yield batch
+                batch = cast(list[Tensor], batch)
+                yield concat(list(map(add_batch_dim, batch)))
 
     def __len__(self) -> int:
         if self.drop_last:
