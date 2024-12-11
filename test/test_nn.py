@@ -10,6 +10,7 @@ from torchlet.nn import (
     Linear,
     Sequential,
     ModuleList,
+    ModuleDict,
 )
 
 
@@ -366,4 +367,28 @@ class TestModuleList:
 
     def test_module_list_empty_initialization(self) -> None:
         module_list = ModuleList([])
-        assert len(module_list._modules) == 0
+        assert len(module_list) == 0
+
+
+class TestModuleDict:
+
+    def test_module_list_initialization(self) -> None:
+        module1 = MagicMock(spec=Module)
+        module2 = MagicMock(spec=Module)
+        module_dict = ModuleDict({"mod1": module1, "mod2": module2})
+
+        assert len(module_dict) == 2
+        assert module_dict._modules["mod1"] == module1
+        assert module_dict._modules["mod2"] == module2
+
+    def test_module_list_repr(self) -> None:
+        module1 = MagicMock(spec=Module)
+        module2 = MagicMock(spec=Module)
+        module_dict = ModuleDict({"mod1": module1, "mod2": module2})
+
+        repr_str = repr(module_dict)
+        assert repr_str == f"ModuleDict({module1}, {module2})"
+
+    def test_module_list_empty_initialization(self) -> None:
+        module_dict = ModuleDict({})
+        assert len(module_dict) == 0
