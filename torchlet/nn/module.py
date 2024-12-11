@@ -87,6 +87,10 @@ class Module:
         val = Parameter(v, k)
         self.__dict__["_parameters"][k] = val
 
+    def add_module(self, key: str, module: Module) -> None:
+        """Manually add a module."""
+        self.__dict__["_modules"][key] = module
+
     def parameters(self) -> Sequence[Parameter]:
         """
         Enumerate over all the parameters of this module and its decendents.
