@@ -1,7 +1,7 @@
 from .module import Module, Parameter
 from .layers import Linear
 from .activations import ReLU, Sigmoid
-from .containers import Sequential, ModuleList
+from .containers import Sequential, ModuleList, ModuleDict
 
 
 __all__ = [
@@ -12,4 +12,5 @@ __all__ = [
     "Sigmoid",
     "Sequential",
     "ModuleList",
+    "ModuleDict",
 ]
