@@ -1,8 +1,10 @@
 import pytest
+from unittest.mock import MagicMock
+from hypothesis import given, strategies as st
 
 import torchlet
 from torchlet import Tensor
-from torchlet.nn import Module, Parameter, Linear
+from torchlet.nn import Module, Parameter, Linear, Sequential
 
 
 class TestModule:
@@ -265,3 +267,73 @@ class TestSimpleModule:
         assert simple_module.linear1.bias.value.grad.shape == (2,)
         assert simple_module.linear2.weight.value.grad.shape == (2, 1)
         assert simple_module.linear2.bias.value.grad.shape == (1,)
+
+
+class TestSequential:
+
+    def test_sequential_initialization(self) -> None:
+        module1 = MagicMock(spec=Module)
+        module2 = MagicMock(spec=Module)
+        seq = Sequential(module1, module2)
+
+        assert len(seq._modules) == 2
+        assert seq._modules["0"] == module1
+        assert seq._modules["1"] == module2
+
+    def test_sequential_forward(self) -> None:
+        module1 = MagicMock(spec=Module)
+        module2 = MagicMock(spec=Module)
+        module1.return_value = "output1"
+        module2.return_value = "output2"
+
+        seq = Sequential(module1, module2)
+        result = seq("input")
+
+        # Check call count
+        assert module1.call_count == 1
+        assert module2.call_count == 1
+
+        # Manually compare call arguments
+        assert module1.call_args == (("input",),)
+        assert module2.call_args == (("output1",),)
+
+        assert result == "output2"
+
+    def test_sequential_repr(self) -> None:
+        module1 = MagicMock(spec=Module)
+        module2 = MagicMock(spec=Module)
+        seq = Sequential(module1, module2)
+
+        repr_str = repr(seq)
+        assert repr_str == f"Sequential({module1}, {module2})"
+
+    @given(st.lists(st.integers(), min_size=1, max_size=10))
+    def test_sequential_forward_with_hypothesis(self, data) -> None:
+        modules = [MagicMock(spec=Module) for _ in data]
+        for i, module in enumerate(modules):
+            module.return_value = data[i]
+
+        seq = Sequential(*modules)
+        result = seq.forward(data[0])
+
+        for i, module in enumerate(modules):
+            if i == 0:
+                assert module.call_args == ((data[0],),)
+            else:
+                assert module.call_args == ((data[i - 1],),)
+
+        assert result == data[-1]
+
+    def test_sequential_empty_initialization(self) -> None:
+        seq = Sequential()
+        assert len(seq._modules) == 0
+
+    def test_sequential_single_module(self) -> None:
+        module = MagicMock(spec=Module)
+        module.return_value = "output"
+
+        seq = Sequential(module)
+        result = seq.forward("input")
+
+        assert module.call_args == (("input",),)
+        assert result == "output"

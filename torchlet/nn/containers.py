@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Iterator
 from torchlet.nn import Module
 
 
@@ -7,10 +7,14 @@ class Sequential(Module):
 
     def __init__(self, *args: Module) -> None:
         super().__init__()
-        self._modules = {str(i): module for i, module in enumerate(args)}
+        for idx, module in enumerate(args):
+            self.add_module(str(idx), module)
+
+    def __iter__(self) -> Iterator[Module]:
+        return iter(self._modules.values())
 
     def forward(self, x: Any) -> Any:
-        for module in self._modules.values():
+        for module in self:
             x = module(x)
         return x
 
