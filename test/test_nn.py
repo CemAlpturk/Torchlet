@@ -4,7 +4,13 @@ from hypothesis import given, strategies as st
 
 import torchlet
 from torchlet import Tensor
-from torchlet.nn import Module, Parameter, Linear, Sequential
+from torchlet.nn import (
+    Module,
+    Parameter,
+    Linear,
+    Sequential,
+    ModuleList,
+)
 
 
 class TestModule:
@@ -337,3 +343,27 @@ class TestSequential:
 
         assert module.call_args == (("input",),)
         assert result == "output"
+
+
+class TestModuleList:
+
+    def test_module_list_initialization(self) -> None:
+        module1 = MagicMock(spec=Module)
+        module2 = MagicMock(spec=Module)
+        module_list = ModuleList([module1, module2])
+
+        assert len(module_list) == 2
+        assert module_list._modules["0"] == module1
+        assert module_list._modules["1"] == module2
+
+    def test_module_list_repr(self) -> None:
+        module1 = MagicMock(spec=Module)
+        module2 = MagicMock(spec=Module)
+        module_list = ModuleList([module1, module2])
+
+        repr_str = repr(module_list)
+        assert repr_str == f"ModuleList({module1}, {module2})"
+
+    def test_module_list_empty_initialization(self) -> None:
+        module_list = ModuleList([])
+        assert len(module_list._modules) == 0

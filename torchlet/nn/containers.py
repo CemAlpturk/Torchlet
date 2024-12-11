@@ -1,4 +1,4 @@
-from typing import Any, Iterator
+from typing import Any, Iterator, Iterable
 from torchlet.nn import Module
 
 
@@ -20,3 +20,24 @@ class Sequential(Module):
 
     def __repr__(self) -> str:
         return f"Sequential({', '.join([str(module) for module in self._modules.values()])})"
+
+
+class ModuleList(Module):
+    """ModuleList container."""
+
+    def __init__(self, modules: Iterable[Module]) -> None:
+        super().__init__()
+
+        for i, module in enumerate(modules):
+            self.add_module(str(i), module)
+
+    def __iter__(self) -> Iterator[Module]:
+        return iter(self._modules.values())
+
+    def __len__(self) -> int:
+        return len(self._modules)
+
+    def __repr__(self) -> str:
+        return (
+            f"ModuleList({', '.join(str(module) for module in self._modules.values())})"
+        )
