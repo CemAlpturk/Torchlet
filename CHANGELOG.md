@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Testing to the CI pipeline
 - `concat` function and tests (#36)
 - `DataLoader` iteration batches the data in new dimension (#36)
+- Module containers, `Sequential`, `ModuleList`, and `ModuleDict` (#37)
 
 ### Removed
 - Linting from the CI pipeline
