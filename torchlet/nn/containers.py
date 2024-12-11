@@ -18,9 +18,6 @@ class Sequential(Module):
             x = module(x)
         return x
 
-    def __repr__(self) -> str:
-        return f"Sequential({', '.join([str(module) for module in self._modules.values()])})"
-
 
 class ModuleList(Module):
     """ModuleList container."""
@@ -37,11 +34,6 @@ class ModuleList(Module):
     def __len__(self) -> int:
         return len(self._modules)
 
-    def __repr__(self) -> str:
-        return (
-            f"ModuleList({', '.join(str(module) for module in self._modules.values())})"
-        )
-
 
 class ModuleDict(Module):
     """ModuleDict container."""
@@ -57,8 +49,3 @@ class ModuleDict(Module):
 
     def __len__(self) -> int:
         return len(self._modules)
-
-    def __repr__(self) -> str:
-        return (
-            f"ModuleDict({', '.join(str(module) for module in self._modules.values())})"
-        )

@@ -306,14 +306,6 @@ class TestSequential:
 
         assert result == "output2"
 
-    def test_sequential_repr(self) -> None:
-        module1 = MagicMock(spec=Module)
-        module2 = MagicMock(spec=Module)
-        seq = Sequential(module1, module2)
-
-        repr_str = repr(seq)
-        assert repr_str == f"Sequential({module1}, {module2})"
-
     @given(st.lists(st.integers(), min_size=1, max_size=10))
     def test_sequential_forward_with_hypothesis(self, data) -> None:
         modules = [MagicMock(spec=Module) for _ in data]
@@ -357,14 +349,6 @@ class TestModuleList:
         assert module_list._modules["0"] == module1
         assert module_list._modules["1"] == module2
 
-    def test_module_list_repr(self) -> None:
-        module1 = MagicMock(spec=Module)
-        module2 = MagicMock(spec=Module)
-        module_list = ModuleList([module1, module2])
-
-        repr_str = repr(module_list)
-        assert repr_str == f"ModuleList({module1}, {module2})"
-
     def test_module_list_empty_initialization(self) -> None:
         module_list = ModuleList([])
         assert len(module_list) == 0
@@ -380,14 +364,6 @@ class TestModuleDict:
         assert len(module_dict) == 2
         assert module_dict._modules["mod1"] == module1
         assert module_dict._modules["mod2"] == module2
-
-    def test_module_list_repr(self) -> None:
-        module1 = MagicMock(spec=Module)
-        module2 = MagicMock(spec=Module)
-        module_dict = ModuleDict({"mod1": module1, "mod2": module2})
-
-        repr_str = repr(module_dict)
-        assert repr_str == f"ModuleDict({module1}, {module2})"
 
     def test_module_list_empty_initialization(self) -> None:
         module_dict = ModuleDict({})
