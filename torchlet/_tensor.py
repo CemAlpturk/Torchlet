@@ -85,6 +85,14 @@ class Tensor:
         else:
             self.history = None
 
+    def to(self, backend: TensorBackend) -> Tensor:
+        """
+        Copy the tensor to a new backend.
+        """
+        return Tensor(
+            self._tensor, self.history, self.name, backend, self.requires_grad
+        )
+
     def to_numpy(self) -> npt.NDArray[np.float64]:
         """
         Returns:
@@ -458,6 +466,7 @@ class Tensor:
             new_shape = tuple(dim for dim in self.shape if dim != 1)
             return self.view(*new_shape)
 
+    # TODO: Remove duplicate function
     def numpy(self) -> np.ndarray:
 
         data = self._tensor._storage

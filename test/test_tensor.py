@@ -4,6 +4,8 @@ import pytest
 from hypothesis import given
 from hypothesis.strategies import DataObject, data, lists, permutations
 
+from torchlet.tensor_ops import SimpleOps, TensorBackend
+from torchlet.fast_ops import FastOps
 from torchlet import Tensor, tensor, concat, zeros, ones
 from torchlet.tensor_functions import grad_check
 
@@ -13,10 +15,17 @@ from .math_tests import MathTestVariable
 
 one_arg, two_arg, red_arg = MathTestVariable._comp_testing()
 
+SimpleBackend = TensorBackend(SimpleOps)
+FastTensorBackend = TensorBackend(FastOps)
+
+backends = [SimpleBackend, FastTensorBackend]
+
 
 @given(lists(small_floats, min_size=1))
-def test_create(t1: list[float]) -> None:
+@pytest.mark.parametrize("backend", backends)
+def test_create(backend: TensorBackend, t1: list[float]) -> None:
     """Test the ability to create an index a 1D Tensor"""
+    t2 = tensor(t1, backend=backend)
     t2 = tensor(t1)
     for i in range(len(t1)):
         assert t1[i] == t2[i]
@@ -24,12 +33,15 @@ def test_create(t1: list[float]) -> None:
 
 @given(tensors())
 @pytest.mark.parametrize("fn", one_arg)
+# @pytest.mark.parametrize("backend", backends)
 def test_one_args(
     fn: tuple[str, Callable[[float], float], Callable[[Tensor], Tensor]],
     t1: Tensor,
+    # backend: TensorBackend,
 ) -> None:
     """Test one-arg functions compared to floats"""
-    name, base_fn, tensor_fn = fn
+    _, base_fn, tensor_fn = fn
+    # t1 = tensor(t1.tolist(), backend=backend)
     t2 = tensor_fn(t1)
     for ind in t2._tensor.indices():
         assert_close(t2[ind].item(), base_fn(t1[ind].item()))
@@ -248,3 +260,17 @@ def test_concat() -> None:
     assert c.shape == (2, 4)
     assert c[0, 0].item() == 0
     assert c[0, 2].item() == 1
+
+
+@pytest.mark.parametrize("b1", backends)
+@pytest.mark.parametrize("b2", backends)
+def test_to(b1: TensorBackend, b2: TensorBackend) -> None:
+
+    a = zeros((2, 2), backend=b1)
+    b = a.to(b2)
+    assert a.shape == b.shape
+    assert a[0, 0].item() == b[0, 0].item()
+    assert a[0, 0].item() == 0
+    assert b[0, 0].item() == 0
+    assert a[0, 0].f == b1
+    assert b[0, 0].f == b2
