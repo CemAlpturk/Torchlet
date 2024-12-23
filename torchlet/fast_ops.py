@@ -18,6 +18,7 @@ from torchlet.tensor_ops import (
     ZipProto,
     ReduceProto,
     TensorOps,
+    TensorBackend,
 )
 
 if TYPE_CHECKING:
@@ -75,7 +76,28 @@ class FastOps(TensorOps):
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
-        pass
+        # Make these always be a 3 dimensional multiply
+        both_2d = 0
+        if len(a.shape) == 2:
+            a = a.contiguous().view(1, a.shape[0], a.shape[1])
+            both_2d += 1
+        if len(b.shape) == 2:
+            b = b.contiguous().view(1, b.shape[0], b.shape[1])
+            both_2d += 1
+        both_2d = both_2d == 2
+
+        ls = list(shape_broadcast(a.shape[:-2], b.shape[:-2]))
+        ls.append(a.shape[-2])
+        ls.append(b.shape[-1])
+        assert a.shape[-1] == b.shape[-2]
+        out = torchlet.zeros(tuple(ls))
+
+        tensor_matrix_multiply(*out.tuple(), *a.tuple(), *b.tuple())  # type: ignore
+
+        # Undo 3d if we added it.
+        if both_2d:
+            out = out.view(out.shape[1], out.shape[2])
+        return out
 
 
 def tensor_map(
@@ -192,3 +214,50 @@ def tensor_reduce(
                 out[out_ind] = fn(a_storage[a_ind], out[out_ind])
 
     return njit(parallel=True)(_reduce)
+
+
+def _tensor_matrix_multiply(
+    out: Storage,
+    out_shape: Shape,
+    out_strides: Strides,
+    a_storage: Storage,
+    a_shape: Shape,
+    a_strides: Strides,
+    b_storage: Storage,
+    b_shape: Shape,
+    b_strides: Strides,
+) -> None:
+    """
+    NUMBA tensor matrix multiply function.
+    """
+
+    a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0
+    b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
+
+    rows = out_shape[1]
+    cols = out_shape[2]
+    common_dim = a_shape[2]
+
+    # Iterate over batches
+    for n in prange(out_shape[0]):
+        out_start_ind: int = out_strides[0] * n
+        a_start_ind: int = a_batch_stride * n
+        b_start_ind: int = b_batch_stride * n
+        for i in prange(rows):
+            a_ind = a_start_ind + (i * a_strides[1])
+            for j in prange(cols):
+                b_ind = b_start_ind + (j * b_strides[2])
+                val = 0
+                # TODO: See if this is better parallel or not, or with a buffer that is summed after
+                for k in prange(common_dim):
+                    a_val = a_storage[a_ind + (k * a_strides[2])]
+                    b_val = b_storage[b_ind + (k * b_strides[1])]
+                    val += a_val * b_val
+                out_ind = out_start_ind + i * out_strides[1] + j * out_strides[2]
+                out[out_ind] = val
+
+
+tensor_matrix_multiply = njit(parallel=True, fastmath=True)(_tensor_matrix_multiply)
+
+
+FastTensorBackend = TensorBackend(FastOps)
