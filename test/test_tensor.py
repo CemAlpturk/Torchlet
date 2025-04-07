@@ -32,16 +32,16 @@ def test_create(backend: TensorBackend, t1: list[float]) -> None:
 
 
 @given(tensors())
+@pytest.mark.parametrize("backend", backends)
 @pytest.mark.parametrize("fn", one_arg)
-# @pytest.mark.parametrize("backend", backends)
 def test_one_args(
     fn: tuple[str, Callable[[float], float], Callable[[Tensor], Tensor]],
+    backend: TensorBackend,
     t1: Tensor,
-    # backend: TensorBackend,
 ) -> None:
     """Test one-arg functions compared to floats"""
     _, base_fn, tensor_fn = fn
-    # t1 = tensor(t1.tolist(), backend=backend)
+    t1 = t1.to(backend)
     t2 = tensor_fn(t1)
     for ind in t2._tensor.indices():
         assert_close(t2[ind].item(), base_fn(t1[ind].item()))
