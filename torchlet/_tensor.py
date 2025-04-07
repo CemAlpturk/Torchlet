@@ -89,9 +89,20 @@ class Tensor:
         """
         Copy the tensor to a new backend.
         """
-        return Tensor(
-            self._tensor, self.history, self.name, backend, self.requires_grad
+        # Copy the tensor data to the new backend
+        new_tensor_data = TensorData(
+            storage=self._tensor._storage.copy(),
+            shape=self._tensor.shape,
+            strides=self._tensor.strides,
         )
+        new_tensor = Tensor(
+            new_tensor_data,
+            back=self.history,
+            name=self.name,
+            backend=backend,
+            requires_grad=self.requires_grad,
+        )
+        return new_tensor
 
     def to_numpy(self) -> npt.NDArray[np.float64]:
         """
