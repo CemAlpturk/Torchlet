@@ -23,6 +23,11 @@ def pow(x: float, y: float) -> float:
     return x**y
 
 
+def sqrt(x: float) -> float:
+    """Compute the square root."""
+    return math.sqrt(x)
+
+
 def neg(x: float) -> float:
     """Negate a number."""
     return -x
@@ -101,6 +106,11 @@ def sigmoid_back(x: float, grad: float) -> float:
 def exp_back(x: float, grad: float) -> float:
     """Backward pass for the exponential function."""
     return grad * math.exp(x)
+
+
+def sqrt_back(x: float, grad: float) -> float:
+    """Backward pass for the square root function."""
+    return grad / (2.0 * math.sqrt(x)) if x > 0.0 else 0.0
 
 
 # Functional ops

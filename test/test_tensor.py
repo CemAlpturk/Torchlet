@@ -248,3 +248,18 @@ def test_concat() -> None:
     assert c.shape == (2, 4)
     assert c[0, 0].item() == 0
     assert c[0, 2].item() == 1
+
+
+def test_sqrt() -> None:
+    t = tensor([4.0, 9.0, 16.0], requires_grad=True)
+    out = t.sqrt()
+    assert_close(out[0].item(), 2.0)
+    assert_close(out[1].item(), 3.0)
+    assert_close(out[2].item(), 4.0)
+
+    out.sum().backward()
+    assert_close(t.grad[0].item(), 1.0 / (2.0 * 2.0))
+    assert_close(t.grad[1].item(), 1.0 / (2.0 * 3.0))
+    assert_close(t.grad[2].item(), 1.0 / (2.0 * 4.0))
+
+    grad_check(lambda x: x.sqrt(), tensor([2.0, 5.0, 10.0], requires_grad=True))

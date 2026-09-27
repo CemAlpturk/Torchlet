@@ -209,6 +209,9 @@ class Tensor:
     def exp(self) -> Tensor:
         return F.Exp.apply(self)
 
+    def sqrt(self) -> Tensor:
+        return F.Sqrt.apply(self)
+
     def item(self) -> float:
         assert self.size == 1
         x: float = self._tensor._storage[0]

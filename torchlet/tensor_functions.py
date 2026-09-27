@@ -173,6 +173,18 @@ class Exp(Function):
         return grad_out.f.exp_back_zip(a, grad_out)
 
 
+class Sqrt(Function):
+    @staticmethod
+    def forward(ctx: Context, a: Tensor) -> Tensor:
+        ctx.save_for_backward(a)
+        return a.f.sqrt_map(a)
+
+    @staticmethod
+    def backward(ctx: Context, grad_out: Tensor) -> Tensor:
+        (a,) = ctx.saved_values
+        return grad_out.f.sqrt_back_zip(a, grad_out)
+
+
 class Sum(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
@@ -571,6 +583,11 @@ def concat(tensors: Sequence[Tensor], dim: int = 0) -> Tensor:
         pos += shape[dim]
 
     return concatenated_tensor
+
+
+def sqrt(a: Tensor) -> Tensor:
+    """Compute the square root of a tensor."""
+    return Sqrt.apply(a)
 
 
 # Gradient check for tensors
