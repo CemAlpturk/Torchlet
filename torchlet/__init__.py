@@ -9,6 +9,7 @@ from .tensor_functions import (
     arange,
     tensor,
     concat,
+    sqrt,
 )
 
 from .autodiff import (
@@ -27,6 +28,7 @@ __all__ = [
     "arange",
     "tensor",
     "concat",
+    "sqrt",
     "is_grad_enabled",
     "set_grad_enabled",
     "no_grad",

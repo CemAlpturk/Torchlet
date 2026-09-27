@@ -75,6 +75,7 @@ class TensorBackend:
         self.exp_map = ops.map(scalar_ops.exp)
         self.id_map = ops.map(scalar_ops.id)
         self.inv_map = ops.map(scalar_ops.inv)
+        self.sqrt_map = ops.map(scalar_ops.sqrt)
 
         # Zips
         self.add_zip = ops.zip(scalar_ops.add)
@@ -87,6 +88,7 @@ class TensorBackend:
         self.log_back_zip = ops.zip(scalar_ops.log_back)
         self.exp_back_zip = ops.zip(scalar_ops.exp_back)
         self.inv_back_zip = ops.zip(scalar_ops.inv_back)
+        self.sqrt_back_zip = ops.zip(scalar_ops.sqrt_back)
 
         # Reduce
         self.add_reduce = ops.reduce(scalar_ops.add, 0.0)
